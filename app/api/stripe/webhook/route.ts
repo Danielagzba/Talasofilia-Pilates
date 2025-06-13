@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
-import { createClient } from '@/lib/supabase'
+import { createServiceSupabaseClient } from '@/lib/supabase-server'
 import Stripe from 'stripe'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
 export async function POST(request: NextRequest) {
   // Check if Stripe is configured
-  if (!stripe || !webhookSecret) {
+  if (!stripe) {
+    console.error('Stripe not configured. Please check your STRIPE_SECRET_KEY environment variable.')
     return NextResponse.json(
-      { error: 'Webhook not configured' },
+      { error: 'Payment system not configured' },
+      { status: 503 }
+    )
+  }
+
+  if (!webhookSecret) {
+    console.error('Webhook secret not configured. Please check your STRIPE_WEBHOOK_SECRET environment variable.')
+    return NextResponse.json(
+      { error: 'Webhook secret not configured' },
       { status: 503 }
     )
   }
@@ -29,12 +38,18 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const supabase = createClient()
+  const supabase = createServiceSupabaseClient()
 
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
+        console.log('Processing checkout.session.completed:', {
+          sessionId: session.id,
+          paymentStatus: session.payment_status,
+          metadata: session.metadata,
+          amountTotal: session.amount_total
+        })
         
         if (session.payment_status === 'paid') {
           const metadata = session.metadata!
@@ -62,6 +77,14 @@ export async function POST(request: NextRequest) {
 
           if (purchaseError) {
             console.error('Error creating purchase:', purchaseError)
+            console.error('Purchase data attempted:', {
+              user_id: metadata.userId,
+              package_id: metadata.packageId,
+              classes_remaining: parseInt(metadata.numberOfClasses),
+              total_classes: parseInt(metadata.numberOfClasses),
+              amount_paid: session.amount_total! / 100,
+              expiry_date: expiryDate.toISOString(),
+            })
             throw purchaseError
           }
 
@@ -91,10 +114,5 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Stripe requires the raw body for webhook signature verification
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
-
+// Note: In Next.js App Router, we handle raw body differently
+// The body is already read as text in the POST function

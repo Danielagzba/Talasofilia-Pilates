@@ -12,11 +12,35 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { createClient } from '../../lib/supabase'
 
+interface UserPurchase {
+  id: string
+  classes_remaining: number
+  total_classes: number
+  expiry_date: string
+  class_packages: {
+    name: string
+  }
+}
+
+interface UpcomingClass {
+  id: string
+  booking_date: string
+  class_schedules: {
+    class_name: string
+    class_date: string
+    start_time: string
+    instructor_name: string
+  }
+}
+
 export default function DashboardPage() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [displayName, setDisplayName] = useState('')
   const [photoURL, setPhotoURL] = useState('')
+  const [userPurchases, setUserPurchases] = useState<UserPurchase[]>([])
+  const [upcomingClasses, setUpcomingClasses] = useState<UpcomingClass[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
   const supabase = createClient()
 
   useEffect(() => {
@@ -25,6 +49,67 @@ export default function DashboardPage() {
       setPhotoURL(user.user_metadata.avatar_url || '')
     }
   }, [user])
+
+  useEffect(() => {
+    if (user) {
+      fetchUserData()
+    }
+  }, [user])
+
+  const fetchUserData = async () => {
+    try {
+      // Fetch active purchases
+      const { data: purchases, error: purchasesError } = await supabase
+        .from('user_purchases')
+        .select(`
+          *,
+          class_packages (
+            name
+          )
+        `)
+        .eq('user_id', user!.id)
+        .eq('payment_status', 'completed')
+        .gte('expiry_date', new Date().toISOString())
+        .gt('classes_remaining', 0)
+        .order('expiry_date', { ascending: true })
+
+      if (!purchasesError && purchases) {
+        console.log('User purchases:', purchases)
+        setUserPurchases(purchases)
+      }
+
+      // Fetch upcoming classes
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('class_bookings')
+        .select(`
+          *,
+          class_schedules (
+            class_name,
+            class_date,
+            start_time,
+            instructor_name
+          )
+        `)
+        .eq('user_id', user!.id)
+        .eq('booking_status', 'confirmed')
+        .order('class_schedules(class_date)', { ascending: true })
+        .order('class_schedules(start_time)', { ascending: true })
+
+      if (!bookingsError && bookings) {
+        // Filter for future classes only
+        const now = new Date()
+        const upcoming = bookings.filter(booking => {
+          const classDate = new Date(`${booking.class_schedules.class_date} ${booking.class_schedules.start_time}`)
+          return classDate > now
+        })
+        setUpcomingClasses(upcoming)
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error)
+    } finally {
+      setDataLoading(false)
+    }
+  }
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -208,17 +293,40 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">0 Classes</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              No active class packages
-            </p>
-            <Button
-              asChild
-              variant="outline"
-              className="mt-4 rounded-none w-full"
-            >
-              <Link href="/dashboard/buy-classes">Buy Classes</Link>
-            </Button>
+            {dataLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                <p className="text-2xl font-bold">
+                  {userPurchases.reduce((sum, p) => sum + p.classes_remaining, 0)} Classes
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {userPurchases.length === 0
+                    ? 'No active class packages'
+                    : `${userPurchases.length} active ${userPurchases.length === 1 ? 'package' : 'packages'}`}
+                </p>
+                {userPurchases.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {userPurchases.map(purchase => (
+                      <p key={purchase.id} className="text-xs text-muted-foreground">
+                        {purchase.class_packages.name}: {purchase.classes_remaining} of {purchase.total_classes} remaining
+                      </p>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  asChild
+                  variant="outline"
+                  className="mt-4 rounded-none w-full"
+                >
+                  <Link href={userPurchases.length > 0 ? "/dashboard/book-class" : "/dashboard/buy-classes"}>
+                    {userPurchases.length > 0 ? "Book a Class" : "Buy Classes"}
+                  </Link>
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -230,17 +338,50 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">0 Classes</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              No upcoming bookings
-            </p>
-            <Button
-              asChild
-              variant="outline"
-              className="mt-4 rounded-none w-full"
-            >
-              <Link href="/dashboard/book-class">Book a Class</Link>
-            </Button>
+            {dataLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                <p className="text-2xl font-bold">{upcomingClasses.length} Classes</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {upcomingClasses.length === 0
+                    ? 'No upcoming bookings'
+                    : upcomingClasses.length === 1
+                    ? 'Next class scheduled'
+                    : 'Classes scheduled'}
+                </p>
+                {upcomingClasses.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {upcomingClasses.slice(0, 2).map(booking => (
+                      <p key={booking.id} className="text-xs text-muted-foreground">
+                        {new Date(`${booking.class_schedules.class_date} ${booking.class_schedules.start_time}`).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit'
+                        })} - {booking.class_schedules.class_name}
+                      </p>
+                    ))}
+                    {upcomingClasses.length > 2 && (
+                      <p className="text-xs text-muted-foreground">
+                        +{upcomingClasses.length - 2} more
+                      </p>
+                    )}
+                  </div>
+                )}
+                <Button
+                  asChild
+                  variant="outline"
+                  className="mt-4 rounded-none w-full"
+                >
+                  <Link href={upcomingClasses.length > 0 ? "/dashboard/my-classes" : "/dashboard/book-class"}>
+                    {upcomingClasses.length > 0 ? "View All Classes" : "Book a Class"}
+                  </Link>
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -55,16 +55,21 @@ export default function BuyClassesPage() {
     setPurchasingId(packageId)
     
     try {
+      // Get the current session to include auth token
+      const { data: { session } } = await supabase.auth.getSession()
+      
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
         },
         body: JSON.stringify({ packageId }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to create checkout session')
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create checkout session')
       }
 
       const { sessionId, url } = await response.json()

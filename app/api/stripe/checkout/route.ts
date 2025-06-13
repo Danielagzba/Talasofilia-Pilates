@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/lib/supabase'
-import { cookies } from 'next/headers'
+import { headers } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   // Check if Stripe is configured
   if (!stripe) {
+    console.error('Stripe not configured. Please check your STRIPE_SECRET_KEY environment variable.')
     return NextResponse.json(
-      { error: 'Payment system not configured' },
+      { error: 'Payment system not configured. Please contact support.' },
       { status: 503 }
     )
   }
@@ -15,12 +16,17 @@ export async function POST(request: NextRequest) {
   try {
     const { packageId } = await request.json()
 
-    // Get the supabase client with server-side auth
-    const cookieStore = cookies()
+    // Get authorization header
+    const headersList = await headers()
+    const authorization = headersList.get('authorization')
+
+    // Get the supabase client
     const supabase = createClient()
 
-    // Get the authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // Get the authenticated user using the token from the header
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authorization?.replace('Bearer ', '') || undefined
+    )
     
     if (authError || !user) {
       return NextResponse.json(
