@@ -4,7 +4,7 @@ import Stripe from 'stripe'
 // This prevents build errors when environment variables are not yet set
 export const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2024-12-18.acacia',
+      apiVersion: '2025-05-28.basil',
       typescript: true,
     })
   : null as any

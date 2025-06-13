@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/auth-context'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
-import { User, Mail, Camera, ShoppingBag, Calendar } from 'lucide-react'
+import { User, Mail, Camera, ShoppingBag, Calendar, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { createClient } from '../../lib/supabase'
@@ -19,15 +19,41 @@ export default function DashboardPage() {
   const [photoURL, setPhotoURL] = useState('')
   const supabase = createClient()
 
+  useEffect(() => {
+    if (user?.user_metadata) {
+      setDisplayName(user.user_metadata.display_name || '')
+      setPhotoURL(user.user_metadata.avatar_url || '')
+    }
+  }, [user])
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !user) return
 
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB')
+      return
+    }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please upload a valid image file (JPEG, PNG, or WebP)')
+      return
+    }
+
     setLoading(true)
     try {
+      // Delete old avatar if exists
+      if (user.user_metadata?.avatar_url) {
+        const oldPath = user.user_metadata.avatar_url.split('/').slice(-2).join('/')
+        await supabase.storage.from('avatars').remove([oldPath])
+      }
+
       const fileExt = file.name.split('.').pop()
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`
-      const filePath = `avatars/${fileName}`
+      const fileName = `${Date.now()}.${fileExt}`
+      const filePath = `${user.id}/${fileName}`
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -105,8 +131,11 @@ export default function DashboardPage() {
           <div className="flex items-center gap-6">
             <div className="relative">
               <Avatar className="h-24 w-24">
-                <AvatarImage src={photoURL || user?.user_metadata?.avatar_url} />
-                <AvatarFallback className="text-lg">
+                <AvatarImage 
+                  src={photoURL || user?.user_metadata?.avatar_url} 
+                  alt="Profile photo"
+                />
+                <AvatarFallback className="text-lg bg-stone-100">
                   {getInitials()}
                 </AvatarFallback>
               </Avatar>
@@ -114,7 +143,11 @@ export default function DashboardPage() {
                 htmlFor="photo-upload"
                 className="absolute bottom-0 right-0 p-1 bg-white rounded-full shadow-md cursor-pointer hover:bg-stone-50 transition-colors"
               >
-                <Camera className="h-4 w-4" />
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Camera className="h-4 w-4" />
+                )}
                 <input
                   id="photo-upload"
                   type="file"
