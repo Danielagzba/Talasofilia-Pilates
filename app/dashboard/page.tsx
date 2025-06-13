@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../contexts/auth-context'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [upcomingClasses, setUpcomingClasses] = useState<UpcomingClass[]>([])
   const [dataLoading, setDataLoading] = useState(true)
   const supabase = createClient()
+  const subscriptionRef = useRef<any>(null)
 
   useEffect(() => {
     if (user?.user_metadata) {
@@ -56,9 +57,71 @@ export default function DashboardPage() {
     }
   }, [user])
 
+  // Refresh data when page gains focus or becomes visible
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user) {
+        fetchUserData()
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user) {
+        fetchUserData()
+      }
+    }
+
+    // Add event listeners
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // Also refresh when navigating back to this page
+    const handlePopState = () => {
+      if (user) {
+        fetchUserData()
+      }
+    }
+    window.addEventListener('popstate', handlePopState)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [user])
+
+  // Set up real-time subscription for user purchases
+  useEffect(() => {
+    if (!user) return
+
+    // Subscribe to changes in user_purchases table
+    subscriptionRef.current = supabase
+      .channel('user_purchases_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_purchases',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('User purchases changed:', payload)
+          fetchUserData()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      if (subscriptionRef.current) {
+        supabase.removeChannel(subscriptionRef.current)
+      }
+    }
+  }, [user, supabase])
+
   const fetchUserData = async () => {
     try {
-      // Fetch active purchases
+      // Fetch active purchases (including those with 0 classes remaining)
       const { data: purchases, error: purchasesError } = await supabase
         .from('user_purchases')
         .select(`
@@ -70,7 +133,7 @@ export default function DashboardPage() {
         .eq('user_id', user!.id)
         .eq('payment_status', 'completed')
         .gte('expiry_date', new Date().toISOString())
-        .gt('classes_remaining', 0)
+        .gte('classes_remaining', 0) // Changed from gt to gte to include 0
         .order('expiry_date', { ascending: true })
 
       if (!purchasesError && purchases) {

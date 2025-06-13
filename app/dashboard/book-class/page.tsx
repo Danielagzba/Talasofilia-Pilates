@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import moment from 'moment'
 import { createClient } from '../../../lib/supabase'
 import { useAuth } from '../../../contexts/auth-context'
 import { Button } from '../../../components/ui/button'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Badge } from '../../../components/ui/badge'
@@ -31,6 +32,7 @@ interface UserPurchase {
 
 export default function BookClassPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [schedules, setSchedules] = useState<ClassSchedule[]>([])
   const [selectedSchedule, setSelectedSchedule] = useState<ClassSchedule | null>(null)
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false)
@@ -42,21 +44,26 @@ export default function BookClassPage() {
   const [currentMonth, setCurrentMonth] = useState(moment().startOf('month'))
   const [currentDay, setCurrentDay] = useState(moment())
   const supabase = createClient()
+  const subscriptionRef = useRef<any>(null)
 
   // Fetch user's purchases
   const fetchUserPurchases = useCallback(async () => {
     if (!user) return
 
+    console.log('Fetching user purchases...')
     const { data, error } = await supabase
       .from('user_purchases')
       .select('*')
       .eq('user_id', user.id)
       .eq('payment_status', 'completed')
       .gte('expiry_date', new Date().toISOString())
-      .gt('classes_remaining', 0)
+      .gte('classes_remaining', 0) // Changed from gt to gte to include 0
       .order('expiry_date', { ascending: true })
 
-    if (!error && data) {
+    if (error) {
+      console.error('Error fetching purchases:', error)
+    } else if (data) {
+      console.log('Fetched purchases:', data)
       setUserPurchases(data)
     }
   }, [user, supabase])
@@ -114,6 +121,60 @@ export default function BookClassPage() {
     fetchClassSchedules()
   }, [fetchClassSchedules])
 
+  // Refresh data when page gains focus or becomes visible
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchUserPurchases()
+      fetchUserBookings()
+      fetchClassSchedules()
+    }
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchUserPurchases()
+        fetchUserBookings()
+        fetchClassSchedules()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [fetchUserPurchases, fetchUserBookings, fetchClassSchedules])
+
+  // Set up real-time subscription for user purchases
+  useEffect(() => {
+    if (!user) return
+
+    // Subscribe to changes in user_purchases table
+    subscriptionRef.current = supabase
+      .channel('book_class_purchases_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_purchases',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('User purchases changed in book-class:', payload)
+          fetchUserPurchases()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      if (subscriptionRef.current) {
+        supabase.removeChannel(subscriptionRef.current)
+      }
+    }
+  }, [user, supabase, fetchUserPurchases])
+
   const handleSelectSchedule = (schedule: ClassSchedule) => {
     setSelectedSchedule(schedule)
     setIsBookingModalOpen(true)
@@ -136,8 +197,9 @@ export default function BookClassPage() {
 
     setLoading(true)
     try {
-      // Use a transaction to ensure both operations succeed or fail together
-      const { error: bookingError } = await supabase
+      // Start a transaction by using RPC or multiple coordinated updates
+      // First, create the booking
+      const { data: bookingData, error: bookingError } = await supabase
         .from('class_bookings')
         .insert({
           user_id: user.id,
@@ -145,51 +207,91 @@ export default function BookClassPage() {
           purchase_id: availablePurchase.id,
           booking_status: 'confirmed'
         })
+        .select()
+        .single()
 
       if (bookingError) throw bookingError
+      console.log('Booking created:', bookingData)
 
-      // Manually decrement classes_remaining as a fallback in case triggers aren't working
-      console.log('Manually decrementing classes from', availablePurchase.classes_remaining, 'to', availablePurchase.classes_remaining - 1)
-      const { data: decrementData, error: decrementError } = await supabase
+      // Manually decrement classes_remaining
+      const newClassesRemaining = availablePurchase.classes_remaining - 1
+      const { data: purchaseUpdate, error: purchaseError } = await supabase
         .from('user_purchases')
         .update({ 
-          classes_remaining: availablePurchase.classes_remaining - 1 
+          classes_remaining: newClassesRemaining 
         })
         .eq('id', availablePurchase.id)
+        .eq('user_id', user.id) // Ensure user owns this purchase
         .select()
+        .single()
 
-      if (decrementError) {
-        console.error('Failed to manually decrement classes:', decrementError)
-        // Don't throw error here as the booking was already created
-      } else {
-        console.log('Decrement successful:', decrementData)
+      if (purchaseError) {
+        console.error('Failed to decrement classes:', purchaseError)
+        console.error('Purchase update details:', {
+          purchaseId: availablePurchase.id,
+          userId: user.id,
+          newClassesRemaining,
+          error: purchaseError
+        })
+        // Try to rollback by deleting the booking
+        const { error: rollbackError } = await supabase
+          .from('class_bookings')
+          .delete()
+          .eq('id', bookingData.id)
+        
+        if (rollbackError) {
+          console.error('Failed to rollback booking:', rollbackError)
+        }
+        
+        throw new Error(`Failed to update classes: ${purchaseError.message}`)
       }
+      
+      console.log('Classes decremented successfully:', purchaseUpdate)
 
-      // Also update the class schedule booking count manually as fallback
-      console.log('Updating schedule bookings from', selectedSchedule.current_bookings, 'to', selectedSchedule.current_bookings + 1)
-      const { data: scheduleData, error: scheduleUpdateError } = await supabase
+      // Update the class schedule booking count
+      const newBookingCount = (selectedSchedule.current_bookings || 0) + 1
+      const { data: scheduleUpdate, error: scheduleError } = await supabase
         .from('class_schedules')
         .update({ 
-          current_bookings: selectedSchedule.current_bookings + 1 
+          current_bookings: newBookingCount 
         })
         .eq('id', selectedSchedule.id)
         .select()
+        .single()
 
-      if (scheduleUpdateError) {
-        console.error('Failed to manually update class booking count:', scheduleUpdateError)
+      if (scheduleError) {
+        console.error('Failed to update schedule booking count:', scheduleError)
+        // Don't fail the whole transaction for this
       } else {
-        console.log('Schedule update successful:', scheduleData)
+        console.log('Schedule updated successfully:', scheduleUpdate)
       }
+
+      // Update local state immediately for better UX
+      setUserPurchases(prev => prev.map(p => 
+        p.id === availablePurchase.id 
+          ? { ...p, classes_remaining: newClassesRemaining }
+          : p
+      ))
+
+      setSchedules(prev => prev.map(s => 
+        s.id === selectedSchedule.id 
+          ? { ...s, current_bookings: newBookingCount }
+          : s
+      ))
 
       toast.success('Class booked successfully!')
       setIsBookingModalOpen(false)
       
-      // Refresh data
+      // Refresh all data to ensure consistency
+      console.log('Refreshing data...')
       await Promise.all([
         fetchUserBookings(),
         fetchUserPurchases(),
         fetchClassSchedules()
       ])
+      
+      // Force router refresh to update all components
+      router.refresh()
     } catch (error) {
       console.error('Booking error:', error)
       toast.error('Failed to book class. Please try again.')
