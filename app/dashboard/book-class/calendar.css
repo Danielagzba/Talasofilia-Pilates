@@ -1,0 +1,133 @@
+/* React Big Calendar Custom Styles */
+.rbc-calendar {
+  font-family: inherit;
+  background: white;
+  min-height: 600px;
+}
+
+.rbc-header {
+  padding: 10px 0;
+  font-weight: 500;
+  border-bottom: 1px solid #e7e5e4;
+}
+
+.rbc-today {
+  background-color: #fafaf9;
+}
+
+.rbc-event {
+  background-color: #292524;
+  border: none;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  font-size: 0.8rem;
+  white-space: normal;
+  overflow: visible;
+}
+
+.rbc-event:hover {
+  opacity: 0.8;
+}
+
+.rbc-event.rbc-event-full {
+  background-color: #dc2626;
+}
+
+.rbc-event.rbc-event-booked {
+  background-color: #16a34a;
+}
+
+.rbc-event-label {
+  font-size: 0.75rem;
+  display: block;
+  line-height: 1.2;
+}
+
+.rbc-event-content {
+  white-space: normal;
+  overflow: visible;
+}
+
+/* Make event slots taller to show full text */
+.rbc-time-slot {
+  min-height: 60px;
+}
+
+.rbc-events-container {
+  margin-right: 10px;
+}
+
+.rbc-toolbar {
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.rbc-toolbar button {
+  background: white;
+  border: 1px solid #e7e5e4;
+  padding: 8px 16px;
+  margin: 0 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.rbc-toolbar button:hover {
+  background: #fafaf9;
+}
+
+.rbc-toolbar button.rbc-active {
+  background: #292524;
+  color: white;
+}
+
+.rbc-toolbar-label {
+  font-weight: 600;
+  min-width: 200px;
+  text-align: center;
+}
+
+/* Make toolbar responsive */
+@media (max-width: 768px) {
+  .rbc-toolbar {
+    font-size: 12px;
+  }
+  
+  .rbc-toolbar button {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
+
+.rbc-month-view {
+  border: 1px solid #e7e5e4;
+}
+
+.rbc-day-bg {
+  border-left: 1px solid #e7e5e4;
+}
+
+.rbc-off-range-bg {
+  background: #fafaf9;
+}
+
+.rbc-agenda-view {
+  border: 1px solid #e7e5e4;
+}
+
+.rbc-agenda-date-cell {
+  padding: 8px;
+  border-bottom: 1px solid #e7e5e4;
+}
+
+.rbc-agenda-time-cell {
+  padding: 8px;
+  white-space: nowrap;
+}
+
+.rbc-agenda-event-cell {
+  padding: 8px;
+}

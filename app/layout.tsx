@@ -5,6 +5,8 @@ import { Inter, Playfair_Display } from 'next/font/google'
 import { ThemeProvider } from '../components/theme-provider'
 import { SiteHeader } from '../components/site-header'
 import { SiteFooter } from '../components/site-footer'
+import { AuthProvider } from '../contexts/auth-context'
+import { Toaster } from 'sonner'
 
 const inter = Inter({
     subsets: ['latin'],
@@ -38,11 +40,14 @@ export default function RootLayout({
                     enableSystem
                     disableTransitionOnChange
                 >
-                    <div className="relative flex min-h-screen flex-col">
-                        <SiteHeader />
-                        <div className="flex-1">{children}</div>
-                        <SiteFooter />
-                    </div>
+                    <AuthProvider>
+                        <div className="relative flex min-h-screen flex-col">
+                            <SiteHeader />
+                            <div className="flex-1">{children}</div>
+                            <SiteFooter />
+                        </div>
+                        <Toaster position="top-center" />
+                    </AuthProvider>
                 </ThemeProvider>
             </body>
         </html>
