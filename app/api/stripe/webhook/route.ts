@@ -6,6 +6,14 @@ import Stripe from 'stripe'
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
 export async function POST(request: NextRequest) {
+  // Check if Stripe is configured
+  if (!stripe || !webhookSecret) {
+    return NextResponse.json(
+      { error: 'Webhook not configured' },
+      { status: 503 }
+    )
+  }
+
   const body = await request.text()
   const signature = request.headers.get('stripe-signature')!
 
