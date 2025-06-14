@@ -145,7 +145,7 @@ export default function BuyClassesPage() {
           const popular = isPopular(pkg)
           
           return (
-            <Card key={pkg.id} className={popular ? 'ring-2 ring-stone-900' : ''}>
+            <Card key={pkg.id} className={`flex flex-col h-full ${popular ? 'ring-2 ring-stone-900' : ''}`}>
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
@@ -159,7 +159,7 @@ export default function BuyClassesPage() {
                   )}
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1">
                 <div className="mb-6">
                   <span className="text-3xl font-bold">${pkg.price}</span>
                   <span className="text-muted-foreground"> MXN</span>
@@ -176,7 +176,7 @@ export default function BuyClassesPage() {
                   ))}
                 </ul>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="mt-auto">
                 <Button 
                   className="w-full rounded-none"
                   onClick={() => handlePurchase(pkg.id)}
