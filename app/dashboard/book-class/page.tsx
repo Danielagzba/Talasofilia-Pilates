@@ -40,7 +40,7 @@ export default function BookClassPage() {
   const [userBookings, setUserBookings] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [currentWeek, setCurrentWeek] = useState(moment().startOf('week'))
-  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('week')
+  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month')
   const [currentMonth, setCurrentMonth] = useState(moment().startOf('month'))
   const [currentDay, setCurrentDay] = useState(moment())
   const supabase = createClient()
