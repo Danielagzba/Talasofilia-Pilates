@@ -337,7 +337,7 @@ export default function ManageClassesPage() {
                       onClick={() => openViewDialog(classItem)}
                     >
                       <Users className="h-4 w-4 mr-1" />
-                      View ({classItem.current_bookings}/{classItem.max_capacity})
+                      View ({Math.max(0, classItem.current_bookings)}/{classItem.max_capacity})
                     </Button>
                     {!classItem.is_cancelled && (
                       <>
@@ -368,11 +368,11 @@ export default function ManageClassesPage() {
                   </div>
                   <div>
                     <p className="text-muted-foreground">Capacity</p>
-                    <p className="font-medium">{classItem.current_bookings}/{classItem.max_capacity}</p>
+                    <p className="font-medium">{Math.max(0, classItem.current_bookings)}/{classItem.max_capacity}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Available Spots</p>
-                    <p className="font-medium">{classItem.max_capacity - classItem.current_bookings}</p>
+                    <p className="font-medium">{Math.max(0, Math.min(classItem.max_capacity, classItem.max_capacity - classItem.current_bookings))}</p>
                   </div>
                 </div>
               </CardContent>
