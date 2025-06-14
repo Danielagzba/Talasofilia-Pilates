@@ -26,7 +26,10 @@ export function useAdmin() {
           .single()
 
         if (!error && data) {
+          console.log('Admin check result:', data)
           setIsAdmin(data.is_admin || false)
+        } else if (error) {
+          console.error('Error in admin check:', error)
         }
       } catch (error) {
         console.error('Error checking admin status:', error)

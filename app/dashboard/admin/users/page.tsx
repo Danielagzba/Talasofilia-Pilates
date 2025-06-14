@@ -8,15 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Button } from '../../../../components/ui/button'
 import { Input } from '../../../../components/ui/input'
 import { Badge } from '../../../../components/ui/badge'
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '../../../../components/ui/dialog'
 import { createClient } from '../../../../lib/supabase'
-import { Loader2, Search, User, Mail, Calendar, ShoppingBag } from 'lucide-react'
+import { Loader2, Search } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface UserProfile {
@@ -36,15 +29,15 @@ export default function ManageUsersPage() {
   const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null)
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
+  const [debugInfo, setDebugInfo] = useState<any>(null)
   const supabase = createClient()
 
   useEffect(() => {
+    console.log('Admin status:', { isAdmin, adminLoading, user })
     if (!adminLoading && !isAdmin) {
       router.push('/dashboard')
     }
-  }, [isAdmin, adminLoading, router])
+  }, [isAdmin, adminLoading, router, user])
 
   useEffect(() => {
     if (isAdmin) {
@@ -63,35 +56,68 @@ export default function ManageUsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase
+      // First, let's check if the current user is an admin
+      const { data: currentUserProfile } = await supabase
         .from('user_profiles')
-        .select(`
-          *,
-          user_purchases (
-            id,
-            classes_remaining,
-            total_classes,
-            expiry_date,
-            payment_status,
+        .select('is_admin')
+        .eq('id', user?.id)
+        .single()
+
+      console.log('Current user admin status:', currentUserProfile)
+      setDebugInfo(currentUserProfile)
+
+      // First, try to get just the user profiles without joins
+      const { data: profilesOnly, error: profilesError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      console.log('Profiles only query:', { profilesOnly, profilesError })
+
+      // Since there's no direct foreign key between user_profiles and other tables,
+      // we'll fetch the data separately and combine it
+      if (profilesOnly && profilesOnly.length > 0) {
+        // Get all user IDs
+        const userIds = profilesOnly.map(p => p.id)
+        
+        // Fetch purchases for all users
+        const { data: allPurchases } = await supabase
+          .from('user_purchases')
+          .select(`
+            *,
             class_packages (
               name
             )
-          ),
-          class_bookings (
-            id,
-            booking_status,
+          `)
+          .in('user_id', userIds)
+        
+        // Fetch bookings for all users
+        const { data: allBookings } = await supabase
+          .from('class_bookings')
+          .select(`
+            *,
             class_schedules (
               class_name,
               class_date,
               start_time
             )
-          )
-        `)
-        .order('created_at', { ascending: false })
-
-      if (!error && data) {
-        setUsers(data)
-        setFilteredUsers(data)
+          `)
+          .in('user_id', userIds)
+        
+        // Combine the data
+        const usersWithData = profilesOnly.map(profile => ({
+          ...profile,
+          user_purchases: allPurchases?.filter(p => p.user_id === profile.id) || [],
+          class_bookings: allBookings?.filter(b => b.user_id === profile.id) || []
+        }))
+        
+        console.log('Combined user data:', usersWithData)
+        setUsers(usersWithData)
+        setFilteredUsers(usersWithData)
+      } else {
+        console.log('No user profiles found')
+        setUsers([])
+        setFilteredUsers([])
       }
     } catch (error) {
       console.error('Error fetching users:', error)
@@ -120,11 +146,6 @@ export default function ManageUsersPage() {
     }
   }
 
-  const openViewDialog = (user: UserProfile) => {
-    setSelectedUser(user)
-    setIsViewDialogOpen(true)
-  }
-
   const getActivePackages = (purchases: any[]) => {
     if (!purchases) return []
     const now = new Date()
@@ -150,6 +171,14 @@ export default function ManageUsersPage() {
     })
   }
 
+  const handleRefreshAuth = async () => {
+    // Force refresh the session
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) {
+      window.location.reload()
+    }
+  }
+
   if (adminLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -159,18 +188,57 @@ export default function ManageUsersPage() {
   }
 
   if (!isAdmin) {
-    return null
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+          <p className="text-muted-foreground mb-4">You don't have admin access to view this page.</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Debug Info: isAdmin={String(isAdmin)}, adminLoading={String(adminLoading)}
+          </p>
+          <Button onClick={handleRefreshAuth} variant="outline">
+            Refresh Authentication
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="font-serif text-3xl font-light">
-          Manage <span className="font-medium italic">Users</span>
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          View and manage user accounts and their class packages
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="font-serif text-3xl font-light">
+            Manage <span className="font-medium italic">Users</span>
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            View and manage user accounts and their class packages
+          </p>
+        </div>
+        {users.length === 0 && !loading && (
+          <div className="text-sm bg-red-50 p-4 rounded-lg max-w-2xl">
+            <p className="font-medium text-red-800 mb-2">Database Permission Issue</p>
+            <p className="text-red-700 mb-3">The admin policies need to be fixed to allow viewing all users.</p>
+            <p className="text-red-700 font-medium">To fix this issue:</p>
+            <ol className="list-decimal list-inside text-red-700 space-y-1 mt-2">
+              <li>Go to your Supabase SQL Editor</li>
+              <li>Run the SQL script in: <code className="bg-red-100 px-1 py-0.5 rounded">fix-admin-access-emergency.sql</code></li>
+              <li>Check your admin status after running the script</li>
+              <li>Refresh this page</li>
+            </ol>
+            <p className="text-red-700 mt-3">
+              If you've lost admin access, you may need to manually update your user record in the database.
+            </p>
+            {debugInfo && (
+              <div className="mt-3 p-2 bg-red-100 rounded">
+                <p className="text-xs font-mono">Debug: is_admin = {String(debugInfo.is_admin)}</p>
+                <p className="text-xs font-mono">Hook: isAdmin = {String(isAdmin)}</p>
+                <p className="text-xs font-mono">User ID: {user?.id}</p>
+                <p className="text-xs text-red-700 mt-2">Check browser console for query results</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-4">
@@ -213,7 +281,7 @@ export default function ManageUsersPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => openViewDialog(userItem)}
+                      onClick={() => router.push(`/dashboard/admin/users/${userItem.id}`)}
                     >
                       View Details
                     </Button>
@@ -251,99 +319,6 @@ export default function ManageUsersPage() {
           )
         })}
       </div>
-
-      {/* View User Details Dialog */}
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>User Details</DialogTitle>
-            <DialogDescription>
-              {selectedUser?.display_name || 'Unknown User'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedUser && (
-            <div className="space-y-6 py-4">
-              {/* User Info */}
-              <div className="space-y-2">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  User Information
-                </h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">ID:</span> {selectedUser.id}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Member Since:</span> {new Date(selectedUser.created_at).toLocaleDateString()}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Admin:</span> {selectedUser.is_admin ? 'Yes' : 'No'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Active Packages */}
-              <div className="space-y-2">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <ShoppingBag className="h-4 w-4" />
-                  Active Class Packages
-                </h3>
-                {getActivePackages(selectedUser.user_purchases || []).length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No active packages</p>
-                ) : (
-                  <div className="space-y-2">
-                    {getActivePackages(selectedUser.user_purchases || []).map((purchase: any) => (
-                      <div key={purchase.id} className="p-3 bg-stone-50 rounded text-sm">
-                        <div className="flex justify-between">
-                          <span className="font-medium">{purchase.class_packages?.name}</span>
-                          <span>{purchase.classes_remaining}/{purchase.total_classes} classes</span>
-                        </div>
-                        <div className="text-muted-foreground text-xs mt-1">
-                          Expires: {new Date(purchase.expiry_date).toLocaleDateString()}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Upcoming Classes */}
-              <div className="space-y-2">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Upcoming Classes
-                </h3>
-                {getUpcomingClasses(selectedUser.class_bookings || []).length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No upcoming classes</p>
-                ) : (
-                  <div className="space-y-2">
-                    {getUpcomingClasses(selectedUser.class_bookings || []).slice(0, 5).map((booking: any) => (
-                      <div key={booking.id} className="p-3 bg-stone-50 rounded text-sm">
-                        <div className="font-medium">{booking.class_schedules.class_name}</div>
-                        <div className="text-muted-foreground text-xs">
-                          {new Date(`${booking.class_schedules.class_date} ${booking.class_schedules.start_time}`).toLocaleString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit'
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                    {getUpcomingClasses(selectedUser.class_bookings || []).length > 5 && (
-                      <p className="text-sm text-muted-foreground">
-                        +{getUpcomingClasses(selectedUser.class_bookings || []).length - 5} more classes
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

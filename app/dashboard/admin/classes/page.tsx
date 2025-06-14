@@ -185,28 +185,58 @@ export default function ManageClassesPage() {
     
     // Fetch bookings for this specific class
     try {
-      const { data: bookings, error } = await supabase
+      // First fetch the bookings
+      const { data: bookings, error: bookingsError } = await supabase
         .from('class_bookings')
-        .select(`
-          *,
-          user_profiles:user_id (
-            display_name
-          )
-        `)
+        .select('*')
         .eq('schedule_id', classItem.id)
         .eq('booking_status', 'confirmed')
 
-      if (!error && bookings) {
-        setSelectedClass({
-          ...classItem,
-          class_bookings: bookings
-        })
+      if (bookingsError) {
+        console.error('Error fetching bookings:', bookingsError)
+        return
       }
+
+      // Then fetch user profiles for each booking
+      if (bookings && bookings.length > 0) {
+        const userIds = bookings.map(b => b.user_id)
+        const { data: profiles, error: profilesError } = await supabase
+          .from('user_profiles')
+          .select('id, display_name')
+          .in('id', userIds)
+
+        if (!profilesError && profiles) {
+          // Map profiles to bookings
+          const bookingsWithProfiles = bookings.map(booking => ({
+            ...booking,
+            user_profiles: profiles.find(p => p.id === booking.user_id)
+          }))
+          
+          console.log('Bookings with profiles:', bookingsWithProfiles)
+          setSelectedClass({
+            ...classItem,
+            class_bookings: bookingsWithProfiles
+          })
+          setIsViewDialogOpen(true)
+          return
+        }
+      }
+
+      // If no bookings, still open the dialog
+      setSelectedClass({
+        ...classItem,
+        class_bookings: []
+      })
+      setIsViewDialogOpen(true)
     } catch (error) {
       console.error('Error fetching class bookings:', error)
+      // Still open dialog on error
+      setSelectedClass({
+        ...classItem,
+        class_bookings: []
+      })
+      setIsViewDialogOpen(true)
     }
-    
-    setIsViewDialogOpen(true)
   }
 
   if (adminLoading || loading) {
@@ -472,14 +502,16 @@ export default function ManageClassesPage() {
                 {selectedClass?.class_bookings
                   ?.filter((b: any) => b.booking_status === 'confirmed')
                   .map((booking: any, index: number) => (
-                    <div key={booking.id} className="flex items-center justify-between p-3 bg-stone-50 rounded">
+                    <div key={booking.id} className="flex items-center justify-between p-3 bg-stone-50 rounded hover:bg-stone-100 transition-colors">
                       <div className="flex items-center gap-3">
                         <span className="text-sm text-muted-foreground">{index + 1}.</span>
-                        <div>
-                          <p className="font-medium">
-                            {booking.user_profiles?.display_name || 'Unknown User'}
-                          </p>
-                        </div>
+                        <Button
+                          variant="link"
+                          className="p-0 h-auto font-medium text-left"
+                          onClick={() => router.push(`/dashboard/admin/users/${booking.user_id}`)}
+                        >
+                          {booking.user_profiles?.display_name || 'Unknown User'}
+                        </Button>
                       </div>
                     </div>
                   ))}
