@@ -24,28 +24,17 @@
 //     )}`
 // }
 
-// imageLoader.ts
+// Optimized Cloudflare Image Loader with advanced features
 
-// Retrieve the base URL from environment variables
-const CLOUDFLARE_IMAGES_URL = 'https://imagedelivery.net/Ph86JZEbPiEJLBCLDii6hA'
+const CLOUDFLARE_IMAGES_URL = process.env.NEXT_PUBLIC_CLOUDFLARE_IMAGES_URL || 'https://imagedelivery.net/Ph86JZEbPiEJLBCLDii6hA'
 
-if (!CLOUDFLARE_IMAGES_URL) {
-    console.error(
-        'Error: NEXT_PUBLIC_CLOUDFLARE_IMAGES_URL environment variable is not set.'
-    )
-    // Throwing an error is usually better in production builds
-    throw new Error(
-        'Missing NEXT_PUBLIC_CLOUDFLARE_IMAGES_URL environment variable'
-    )
-    // Or return a placeholder for development:
-    // return `https://via.placeholder.com/${width}`;
-}
-
-// Ensure the base URL doesn't have a trailing slash
 const cloudflareBaseUrl = CLOUDFLARE_IMAGES_URL.replace(/\/$/, '')
 
+// Device pixel ratio breakpoints for responsive images
+const devicePixelRatios = [1, 2]
+
 export default function cloudflareLoader({
-    src, // This 'src' MUST be your Cloudflare Image ID (e.g., "P4130100.png")
+    src,
     width,
     quality,
 }: {
@@ -53,20 +42,37 @@ export default function cloudflareLoader({
     width: number
     quality?: number
 }) {
-    const params = [`width=${width}`]
-    if (quality) {
-        // Ensure quality is within Cloudflare's range if needed, default is often ~75-85
-        params.push(`quality=${quality || 75}`)
+    // Handle local placeholder images
+    if (src.includes('placeholder.svg')) {
+        return src
     }
-    // Cloudflare uses comma-separated key=value pairs for the variant string
-    const paramsString = params.join(',')
 
-    // Ensure the src (Image ID) doesn't start with a slash
-    // This handles cases where src might accidentally be passed as "/<IMAGE_ID>"
+    // Build transformation parameters
+    const params: string[] = []
+    
+    // Width optimization
+    params.push(`width=${width}`)
+    
+    // Quality optimization (default to 85 for good balance)
+    const optimizedQuality = quality || 85
+    params.push(`quality=${optimizedQuality}`)
+    
+    // Format auto-selection (WebP/AVIF when supported)
+    params.push('format=auto')
+    
+    // Fit mode for consistent sizing
+    params.push('fit=scale-down')
+    
+    // Enable progressive loading for better perceived performance
+    params.push('metadata=none')
+    
+    // Add sharpening for smaller images
+    if (width < 400) {
+        params.push('sharpen=0.2')
+    }
+
+    const paramsString = params.join(',')
     const imageId = src.startsWith('/') ? src.slice(1) : src
 
-    // **CRITICAL:** Construct the URL in the correct format:
-    // BASE_URL / IMAGE_ID / VARIANT_PARAMS
-    // Example: https://imagedelivery.net/<HASH>/P4130100.png/width=3840,quality=75
     return `${cloudflareBaseUrl}/${imageId}/${paramsString}`
 }
