@@ -3,8 +3,9 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../../contexts/auth-context'
+import { useAdmin } from '../../hooks/use-admin'
 import Link from 'next/link'
-import { User, Calendar, ShoppingBag, History, Loader2 } from 'lucide-react'
+import { User, Calendar, ShoppingBag, History, Loader2, Shield, Users, Settings } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { usePathname } from 'next/navigation'
 
@@ -16,12 +17,20 @@ const navigation = [
   { name: 'Purchase History', href: '/dashboard/purchase-history', icon: History },
 ]
 
+const adminNavigation = [
+  { name: 'Admin Dashboard', href: '/dashboard/admin', icon: Shield },
+  { name: 'Manage Classes', href: '/dashboard/admin/classes', icon: Calendar },
+  { name: 'Manage Users', href: '/dashboard/admin/users', icon: Users },
+  { name: 'Settings', href: '/dashboard/admin/settings', icon: Settings },
+]
+
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   const { user, loading } = useAuth()
+  const { isAdmin } = useAdmin()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -67,6 +76,34 @@ export default function DashboardLayout({
                   </Link>
                 )
               })}
+              
+              {isAdmin && (
+                <>
+                  <div className="border-t my-4 pt-4">
+                    <p className="px-4 text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2">
+                      Admin
+                    </p>
+                    {adminNavigation.map((item) => {
+                      const Icon = item.icon
+                      return (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          className={cn(
+                            'flex items-center px-4 py-3 text-sm font-medium transition-colors',
+                            pathname === item.href
+                              ? 'bg-stone-100 text-stone-900'
+                              : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+                          )}
+                        >
+                          <Icon className="mr-3 h-4 w-4" />
+                          {item.name}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
             </nav>
           </aside>
           <main className="md:col-span-3 bg-white p-6 md:p-8 shadow-sm">
