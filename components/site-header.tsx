@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, User, LogOut, Calendar, ShoppingBag, History } from "lucide-react";
+import {
+  Menu,
+  User,
+  LogOut,
+  Calendar,
+  ShoppingBag,
+  History,
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { useMobile } from "../hooks/use-mobile";
@@ -27,7 +34,7 @@ export function SiteHeader() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/20 backdrop-blur-sm">
+    <header className="bg-stone-50">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
         <Link href="/" className="font-serif text-xl md:text-2xl font-light">
           Talasofilia <span className="font-medium italic">Pilates</span>
@@ -67,24 +74,39 @@ export function SiteHeader() {
                       <p className="text-sm text-muted-foreground mb-4">
                         Signed in as {user.email}
                       </p>
-                      <Link href="/dashboard" className="block text-lg font-medium mb-4">
+                      <Link
+                        href="/dashboard"
+                        className="block text-lg font-medium mb-4"
+                      >
                         Dashboard
                       </Link>
-                      <Link href="/dashboard/book-class" className="block text-lg font-medium mb-4">
+                      <Link
+                        href="/dashboard/book-class"
+                        className="block text-lg font-medium mb-4"
+                      >
                         Book a Class
                       </Link>
-                      <Link href="/dashboard/my-classes" className="block text-lg font-medium mb-4">
+                      <Link
+                        href="/dashboard/my-classes"
+                        className="block text-lg font-medium mb-4"
+                      >
                         My Classes
                       </Link>
-                      <Link href="/dashboard/buy-classes" className="block text-lg font-medium mb-4">
+                      <Link
+                        href="/dashboard/buy-classes"
+                        className="block text-lg font-medium mb-4"
+                      >
                         Buy Classes
                       </Link>
-                      <Link href="/dashboard/purchase-history" className="block text-lg font-medium mb-4">
+                      <Link
+                        href="/dashboard/purchase-history"
+                        className="block text-lg font-medium mb-4"
+                      >
                         Purchase History
                       </Link>
-                      <Button 
-                        onClick={handleSignOut} 
-                        variant="outline" 
+                      <Button
+                        onClick={handleSignOut}
+                        variant="outline"
                         className="mt-4 w-full rounded-none"
                       >
                         Sign Out
@@ -150,31 +172,46 @@ export function SiteHeader() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard/book-class" className="cursor-pointer">
+                    <Link
+                      href="/dashboard/book-class"
+                      className="cursor-pointer"
+                    >
                       <Calendar className="mr-2 h-4 w-4" />
                       Book a Class
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard/my-classes" className="cursor-pointer">
+                    <Link
+                      href="/dashboard/my-classes"
+                      className="cursor-pointer"
+                    >
                       <Calendar className="mr-2 h-4 w-4" />
                       My Classes
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard/buy-classes" className="cursor-pointer">
+                    <Link
+                      href="/dashboard/buy-classes"
+                      className="cursor-pointer"
+                    >
                       <ShoppingBag className="mr-2 h-4 w-4" />
                       Buy Classes
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard/purchase-history" className="cursor-pointer">
+                    <Link
+                      href="/dashboard/purchase-history"
+                      className="cursor-pointer"
+                    >
                       <History className="mr-2 h-4 w-4" />
                       Purchase History
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={handleSignOut}
+                    className="cursor-pointer"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
                   </DropdownMenuItem>
