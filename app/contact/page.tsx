@@ -1,16 +1,72 @@
+'use client'
+
+import { useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Textarea } from '../../components/ui/textarea'
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'
-
-export const metadata = {
-    title: 'Contact Us | Estudio Pilates',
-    description:
-        'Get in touch with Estudio Pilates in Mexico City. Contact information and inquiry form.',
-}
+import { useToast } from '../../components/ui/use-toast'
 
 export default function ContactPage() {
+    const [isLoading, setIsLoading] = useState(false)
+    const { toast } = useToast()
+    const [formData, setFormData] = useState({
+        firstName: '',
+        lastName: '',
+        email: '',
+        subject: '',
+        message: ''
+    })
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        setFormData(prev => ({
+            ...prev,
+            [e.target.id]: e.target.value
+        }))
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setIsLoading(true)
+
+        try {
+            const response = await fetch('/api/contact', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to send message')
+            }
+
+            toast({
+                title: 'Message sent!',
+                description: 'We\'ll get back to you as soon as possible.',
+            })
+
+            setFormData({
+                firstName: '',
+                lastName: '',
+                email: '',
+                subject: '',
+                message: ''
+            })
+        } catch (error) {
+            toast({
+                title: 'Error',
+                description: error instanceof Error ? error.message : 'Failed to send message. Please try again.',
+                variant: 'destructive',
+            })
+        } finally {
+            setIsLoading(false)
+        }
+    }
     return (
         <div className="pt-16">
             <section className="py-20 md:py-32">
@@ -124,24 +180,30 @@ export default function ContactPage() {
                                         Message
                                     </span>
                                 </h2>
-                                <form className="space-y-6">
+                                <form onSubmit={handleSubmit} className="space-y-6">
                                     <div className="grid gap-4 sm:grid-cols-2">
                                         <div className="space-y-2">
-                                            <Label htmlFor="first-name">
+                                            <Label htmlFor="firstName">
                                                 First Name
                                             </Label>
                                             <Input
-                                                id="first-name"
+                                                id="firstName"
+                                                value={formData.firstName}
+                                                onChange={handleChange}
                                                 placeholder="Enter your first name"
+                                                required
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="last-name">
+                                            <Label htmlFor="lastName">
                                                 Last Name
                                             </Label>
                                             <Input
-                                                id="last-name"
+                                                id="lastName"
+                                                value={formData.lastName}
+                                                onChange={handleChange}
                                                 placeholder="Enter your last name"
+                                                required
                                             />
                                         </div>
                                     </div>
@@ -151,7 +213,10 @@ export default function ContactPage() {
                                         <Input
                                             id="email"
                                             type="email"
+                                            value={formData.email}
+                                            onChange={handleChange}
                                             placeholder="Enter your email"
+                                            required
                                         />
                                     </div>
 
@@ -159,7 +224,10 @@ export default function ContactPage() {
                                         <Label htmlFor="subject">Subject</Label>
                                         <Input
                                             id="subject"
+                                            value={formData.subject}
+                                            onChange={handleChange}
                                             placeholder="Enter subject"
+                                            required
                                         />
                                     </div>
 
@@ -167,13 +235,20 @@ export default function ContactPage() {
                                         <Label htmlFor="message">Message</Label>
                                         <Textarea
                                             id="message"
+                                            value={formData.message}
+                                            onChange={handleChange}
                                             placeholder="Enter your message"
                                             rows={5}
+                                            required
                                         />
                                     </div>
 
-                                    <Button className="w-full rounded-none">
-                                        Send Message
+                                    <Button 
+                                        type="submit" 
+                                        className="w-full rounded-none"
+                                        disabled={isLoading}
+                                    >
+                                        {isLoading ? 'Sending...' : 'Send Message'}
                                     </Button>
                                 </form>
                             </div>

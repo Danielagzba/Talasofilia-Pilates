@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServiceSupabaseClient } from '@/lib/supabase-server'
+import { sendEmail, emailTemplates } from '@/lib/email-service'
 import Stripe from 'stripe'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
@@ -89,6 +90,45 @@ export async function POST(request: NextRequest) {
           }
 
           console.log('Purchase created successfully:', purchase)
+
+          // Send purchase confirmation email
+          try {
+            // Get user details
+            const { data: userData, error: userError } = await supabase.auth.admin.getUserById(metadata.userId)
+            
+            if (!userError && userData.user?.email) {
+              // Get user profile
+              const { data: profile } = await supabase
+                .from('user_profiles')
+                .select('display_name')
+                .eq('user_id', metadata.userId)
+                .single()
+
+              // Get package details
+              const { data: packageData } = await supabase
+                .from('class_packages')
+                .select('name')
+                .eq('id', metadata.packageId)
+                .single()
+
+              const userName = profile?.display_name || userData.user.email.split('@')[0] || 'there'
+              const emailData = emailTemplates.purchaseConfirmation(
+                userName,
+                packageData?.name || 'Class Package',
+                parseInt(metadata.numberOfClasses),
+                parseInt(metadata.validityDays),
+                session.amount_total!
+              )
+
+              await sendEmail({
+                to: userData.user.email,
+                ...emailData
+              })
+            }
+          } catch (emailError) {
+            console.error('Failed to send purchase confirmation email:', emailError)
+            // Don't throw error here as the purchase was successful
+          }
         }
         break
       }

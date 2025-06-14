@@ -142,6 +142,20 @@ export default function MyClassesPage() {
 
       if (cancelError) throw cancelError
 
+      // Send cancellation email
+      try {
+        await fetch('/api/bookings/cancel-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            bookingId: selectedBooking.id,
+            userId: user?.id
+          })
+        })
+      } catch (emailError) {
+        console.error('Failed to send cancellation email:', emailError)
+      }
+
       // Manually increment classes_remaining as fallback
       if (bookingData.purchase_id) {
         const { error: incrementError } = await supabase
