@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from '../../../../components/ui/dialog'
 import { createClient } from '../../../../lib/supabase'
-import { Loader2, Plus, Edit, Trash2, Users, Calendar } from 'lucide-react'
+import { Loader2, Plus, Edit, Trash2, Users, Calendar, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 
@@ -35,6 +35,16 @@ interface ClassSchedule {
   class_bookings?: any[]
 }
 
+interface ClassTemplate {
+  id: string
+  template_name: string
+  class_name: string
+  instructor_name: string
+  start_time: string
+  end_time: string
+  max_capacity: number
+}
+
 export default function ManageClassesPage() {
   const { user } = useAuth()
   const { isAdmin, loading: adminLoading } = useAdmin()
@@ -45,6 +55,10 @@ export default function ManageClassesPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false)
+  const [templates, setTemplates] = useState<ClassTemplate[]>([])
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('')
+  const [templateName, setTemplateName] = useState('')
   const supabase = createClient()
 
   // Form state for adding/editing classes
@@ -66,6 +80,30 @@ export default function ManageClassesPage() {
   useEffect(() => {
     if (isAdmin) {
       fetchClasses()
+      fetchTemplates()
+      
+      // Check if there's a template to load from the templates page
+      const storedTemplate = sessionStorage.getItem('selectedTemplate')
+      if (storedTemplate) {
+        const template = JSON.parse(storedTemplate)
+        
+        setFormData({
+          class_name: template.class_name,
+          instructor_name: template.instructor_name,
+          class_date: new Date().toISOString().split('T')[0], // Today's date
+          start_time: template.start_time,
+          end_time: template.end_time,
+          max_capacity: template.max_capacity
+        })
+        
+        // Open the add dialog
+        setIsAddDialogOpen(true)
+        
+        // Clear the stored template
+        sessionStorage.removeItem('selectedTemplate')
+        
+        toast.success(`Template "${template.template_name}" loaded`)
+      }
     }
   }, [isAdmin])
 
@@ -90,7 +128,86 @@ export default function ManageClassesPage() {
     }
   }
 
+  const fetchTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('class_templates')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (!error && data) {
+        setTemplates(data)
+      } else if (error?.code === '42P01') {
+        // Table doesn't exist yet - this is okay
+        console.log('Class templates table not yet created')
+      } else if (error) {
+        console.error('Error fetching templates:', error)
+      }
+    } catch (error) {
+      console.error('Error fetching templates:', error)
+    }
+  }
+
+  const handleSaveAsTemplate = async () => {
+    if (!templateName.trim()) {
+      toast.error('Please enter a template name')
+      return
+    }
+
+    if (!formData.start_time || !formData.end_time) {
+      toast.error('Please set start and end times before saving as template')
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('class_templates')
+        .insert([{
+          template_name: templateName,
+          class_name: formData.class_name,
+          instructor_name: formData.instructor_name,
+          start_time: formData.start_time,
+          end_time: formData.end_time,
+          max_capacity: formData.max_capacity
+        }])
+
+      if (error) throw error
+
+      toast.success('Template saved successfully')
+      setIsTemplateDialogOpen(false)
+      setTemplateName('')
+      fetchTemplates()
+    } catch (error) {
+      console.error('Error saving template:', error)
+      toast.error('Failed to save template')
+    }
+  }
+
+  const handleLoadTemplate = (templateId: string) => {
+    const template = templates.find(t => t.id === templateId)
+    if (!template) return
+
+    setFormData({
+      ...formData,
+      class_name: template.class_name,
+      instructor_name: template.instructor_name,
+      start_time: template.start_time,
+      end_time: template.end_time,
+      max_capacity: template.max_capacity
+    })
+    
+    toast.success(`Template "${template.template_name}" loaded`)
+  }
+
+
   const handleAddClass = async () => {
+    // Validate form data
+    if (!formData.class_name || !formData.instructor_name || !formData.class_date || 
+        !formData.start_time || !formData.end_time) {
+      toast.error('Please fill in all required fields')
+      return
+    }
+
     try {
       const { error } = await supabase
         .from('class_schedules')
@@ -102,6 +219,7 @@ export default function ManageClassesPage() {
       setIsAddDialogOpen(false)
       fetchClasses()
       resetForm()
+      setSelectedTemplate('') // Reset template selection
     } catch (error) {
       console.error('Error adding class:', error)
       toast.error('Failed to add class')
@@ -152,6 +270,25 @@ export default function ManageClassesPage() {
     } catch (error) {
       console.error('Error cancelling class:', error)
       toast.error('Failed to cancel class')
+    }
+  }
+
+  const handleUncancelClass = async (classId: string) => {
+    if (!confirm('Are you sure you want to un-cancel this class?')) return
+
+    try {
+      const { error } = await supabase
+        .from('class_schedules')
+        .update({ is_cancelled: false })
+        .eq('id', classId)
+
+      if (error) throw error
+
+      toast.success('Class un-cancelled successfully')
+      fetchClasses()
+    } catch (error) {
+      console.error('Error un-cancelling class:', error)
+      toast.error('Failed to un-cancel class')
     }
   }
 
@@ -269,7 +406,7 @@ export default function ManageClassesPage() {
               Add Class
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Add New Class</DialogTitle>
               <DialogDescription>
@@ -331,12 +468,71 @@ export default function ManageClassesPage() {
                   onChange={(e) => setFormData({ ...formData, max_capacity: parseInt(e.target.value) })}
                 />
               </div>
+              {templates.length > 0 && (
+                <div className="grid gap-2">
+                  <Label>Load from Template</Label>
+                  <select
+                    className="h-10 w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    value={selectedTemplate}
+                    onChange={(e) => {
+                      setSelectedTemplate(e.target.value)
+                      if (e.target.value) {
+                        handleLoadTemplate(e.target.value)
+                      }
+                    }}
+                  >
+                    <option value="">Select a template...</option>
+                    {templates.map(template => (
+                      <option key={template.id} value={template.id}>
+                        {template.template_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleAddClass}>Add Class</Button>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    <Save className="h-4 w-4 mr-2" />
+                    Save as Template
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Save as Template</DialogTitle>
+                    <DialogDescription>
+                      Save this class configuration as a template for future use
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="template_name">Template Name</Label>
+                      <Input
+                        id="template_name"
+                        value={templateName}
+                        onChange={(e) => setTemplateName(e.target.value)}
+                        placeholder="e.g., Morning Vinyasa Flow"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsTemplateDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSaveAsTemplate}>Save Template</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="flex-1 sm:flex-initial">
+                  Cancel
+                </Button>
+                <Button onClick={handleAddClass} className="flex-1 sm:flex-initial">
+                  Add Class
+                </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -369,7 +565,7 @@ export default function ManageClassesPage() {
                       <Users className="h-4 w-4 mr-1" />
                       View ({Math.max(0, classItem.current_bookings)}/{classItem.max_capacity})
                     </Button>
-                    {!classItem.is_cancelled && (
+                    {!classItem.is_cancelled ? (
                       <>
                         <Button
                           variant="outline"
@@ -386,6 +582,15 @@ export default function ManageClassesPage() {
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUncancelClass(classItem.id)}
+                      >
+                        <Calendar className="h-4 w-4 mr-1" />
+                        Un-cancel
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -525,6 +730,7 @@ export default function ManageClassesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   )
 }

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '../../contexts/auth-context'
 import { useAdmin } from '../../hooks/use-admin'
 import Link from 'next/link'
-import { User, Calendar, ShoppingBag, History, Loader2, Shield, Users, Settings } from 'lucide-react'
+import { User, Calendar, ShoppingBag, History, Loader2, Shield, Users, Settings, FileText } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { usePathname } from 'next/navigation'
 
@@ -20,6 +20,7 @@ const navigation = [
 const adminNavigation = [
   { name: 'Admin Dashboard', href: '/dashboard/admin', icon: Shield },
   { name: 'Manage Classes', href: '/dashboard/admin/classes', icon: Calendar },
+  { name: 'Class Templates', href: '/dashboard/admin/templates', icon: FileText },
   { name: 'Manage Users', href: '/dashboard/admin/users', icon: Users },
   { name: 'Settings', href: '/dashboard/admin/settings', icon: Settings },
 ]
