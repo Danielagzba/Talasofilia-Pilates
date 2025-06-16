@@ -10,7 +10,7 @@ export default function Home() {
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <Image
-            src="cfe2b06b-bf25-4f62-28f8-e8fc9f969b00"
+            src="de118328-d654-4d78-f3aa-fe0d33b21200"
             alt="Talasofilia studio"
             fill
             sizes="100vw"
