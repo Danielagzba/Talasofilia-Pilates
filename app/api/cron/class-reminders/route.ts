@@ -3,14 +3,13 @@ import { createClient } from '@supabase/supabase-js'
 import { sendEmail, emailTemplates } from '@/lib/email-service'
 import { addHours, startOfHour } from 'date-fns'
 
-// Create Supabase client with service role for admin operations
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function GET(request: NextRequest) {
     try {
+        // Create Supabase client with service role for admin operations
+        const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
         // Verify the request is from a trusted source (Vercel Cron)
         const authHeader = request.headers.get('authorization')
         if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
