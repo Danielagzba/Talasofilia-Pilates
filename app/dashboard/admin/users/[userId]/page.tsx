@@ -225,7 +225,7 @@ export default function UserProfilePage() {
       {/* Active Passes */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-start">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
             <div>
               <CardTitle>Class Passes</CardTitle>
               <CardDescription>
@@ -235,7 +235,7 @@ export default function UserProfilePage() {
             <Button 
               size="sm" 
               onClick={() => setShowAddCreditsModal(true)}
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
             >
               <Plus className="h-4 w-4" />
               Add Credits
@@ -258,8 +258,8 @@ export default function UserProfilePage() {
                       'bg-stone-50 border-stone-200'
                     }`}
                   >
-                    <div className="flex justify-between items-start">
-                      <div>
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                      <div className="flex-1">
                         <h4 className="font-semibold">{purchase.class_packages?.name}</h4>
                         <p className="text-sm text-muted-foreground">
                           Purchased {format(new Date(purchase.purchase_date), 'MMM d, yyyy')}
@@ -268,7 +268,7 @@ export default function UserProfilePage() {
                           ${purchase.amount_paid} • {purchase.payment_method || 'Unknown method'}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="sm:text-right">
                         <p className="font-semibold text-lg">
                           {purchase.classes_remaining}/{purchase.total_classes}
                         </p>
@@ -316,12 +316,12 @@ export default function UserProfilePage() {
                 return (
                   <div 
                     key={booking.id} 
-                    className="flex justify-between items-center p-4 bg-stone-50 rounded-lg hover:bg-stone-100 transition-colors"
+                    className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 bg-stone-50 rounded-lg hover:bg-stone-100 transition-colors gap-3"
                   >
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h4 className="font-medium">{booking.class_schedules?.class_name}</h4>
-                        <span className={`text-xs px-2 py-1 rounded-full ${
+                        <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ${
                           booking.booking_status === 'confirmed' && !isPast ? 'bg-green-100 text-green-800' :
                           booking.booking_status === 'attended' ? 'bg-blue-100 text-blue-800' :
                           booking.booking_status === 'cancelled' ? 'bg-red-100 text-red-800' :
@@ -339,7 +339,7 @@ export default function UserProfilePage() {
                         Instructor: {booking.class_schedules?.instructor_name}
                       </p>
                     </div>
-                    <div className="text-right text-sm text-muted-foreground">
+                    <div className="sm:text-right text-sm text-muted-foreground">
                       <p>Booked {format(new Date(booking.booked_at), 'MMM d, yyyy')}</p>
                       {booking.cancelled_at && (
                         <p className="text-red-600">
