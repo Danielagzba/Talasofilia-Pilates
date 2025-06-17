@@ -1,0 +1,191 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Button } from '../ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
+import { Label } from '../ui/label'
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group'
+import { X, Loader2 } from 'lucide-react'
+import { createClient } from '../../lib/supabase'
+import { toast } from 'sonner'
+import { format, addDays } from 'date-fns'
+
+interface Package {
+  id: string
+  name: string
+  description: string
+  number_of_classes: number
+  price: number
+  validity_days: number
+}
+
+interface AddCreditsModalProps {
+  userId: string
+  userName: string
+  onClose: () => void
+  onSuccess: () => void
+}
+
+export function AddCreditsModal({ userId, userName, onClose, onSuccess }: AddCreditsModalProps) {
+  const [packages, setPackages] = useState<Package[]>([])
+  const [selectedPackageId, setSelectedPackageId] = useState<string>('')
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const supabase = createClient()
+
+  useEffect(() => {
+    fetchPackages()
+  }, [])
+
+  const fetchPackages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('class_packages')
+        .select('*')
+        .eq('is_active', true)
+        .order('number_of_classes', { ascending: true })
+
+      if (error) throw error
+      setPackages(data || [])
+      if (data && data.length > 0) {
+        setSelectedPackageId(data[0].id)
+      }
+    } catch (error) {
+      console.error('Error fetching packages:', error)
+      toast.error('Failed to load packages')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!selectedPackageId) {
+      toast.error('Please select a package')
+      return
+    }
+
+    setSubmitting(true)
+    const selectedPackage = packages.find(p => p.id === selectedPackageId)
+    if (!selectedPackage) return
+
+    try {
+      // Create a new purchase record
+      const purchaseDate = new Date()
+      const expiryDate = addDays(purchaseDate, selectedPackage.validity_days)
+
+      const { data, error } = await supabase
+        .from('user_purchases')
+        .insert({
+          user_id: userId,
+          package_id: selectedPackageId,
+          purchase_date: purchaseDate.toISOString(),
+          expiry_date: expiryDate.toISOString(),
+          classes_remaining: selectedPackage.number_of_classes,
+          total_classes: selectedPackage.number_of_classes,
+          amount_paid: selectedPackage.price,
+          payment_method: 'cash',
+          payment_status: 'completed'
+        })
+
+      if (error) throw error
+
+      toast.success(`Successfully added ${selectedPackage.number_of_classes} credits to ${userName}`)
+      onSuccess()
+    } catch (error) {
+      console.error('Error adding credits:', error)
+      toast.error('Failed to add credits')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <Card className="w-full max-w-md">
+        <CardHeader className="relative">
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <CardTitle>Add Class Credits</CardTitle>
+          <CardDescription>
+            Add credits for {userName} (cash payment)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <Label>Select Package</Label>
+                <RadioGroup value={selectedPackageId} onValueChange={setSelectedPackageId}>
+                  {packages.map((pkg) => (
+                    <div key={pkg.id} className="flex items-start space-x-3 space-y-0">
+                      <RadioGroupItem value={pkg.id} />
+                      <label htmlFor={pkg.id} className="flex-1 cursor-pointer">
+                        <div className="grid gap-1.5 leading-none">
+                          <div className="font-medium">
+                            {pkg.name} - ${pkg.price}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {pkg.number_of_classes} classes • Valid for {pkg.validity_days} days
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {pkg.description}
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              <div className="bg-stone-50 rounded-lg p-4">
+                <h4 className="font-medium mb-2">Summary</h4>
+                {selectedPackageId && packages.find(p => p.id === selectedPackageId) && (
+                  <div className="space-y-1 text-sm">
+                    <p>Package: {packages.find(p => p.id === selectedPackageId)?.name}</p>
+                    <p>Credits: {packages.find(p => p.id === selectedPackageId)?.number_of_classes} classes</p>
+                    <p>Amount: ${packages.find(p => p.id === selectedPackageId)?.price}</p>
+                    <p>Expires: {format(addDays(new Date(), packages.find(p => p.id === selectedPackageId)?.validity_days || 0), 'MMM d, yyyy')}</p>
+                    <p className="text-muted-foreground mt-2">Payment method: Cash (in-person)</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={onClose}
+                  disabled={submitting}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={submitting || !selectedPackageId}
+                  className="flex-1"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    'Add Credits'
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

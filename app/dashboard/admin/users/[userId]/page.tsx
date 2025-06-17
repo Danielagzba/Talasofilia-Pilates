@@ -7,10 +7,11 @@ import { useAdmin } from '../../../../../hooks/use-admin'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card'
 import { Button } from '../../../../../components/ui/button'
 import { createClient } from '../../../../../lib/supabase'
-import { Loader2, ArrowLeft, User, Calendar, CreditCard } from 'lucide-react'
+import { Loader2, ArrowLeft, User, Calendar, CreditCard, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import Link from 'next/link'
+import { AddCreditsModal } from '../../../../../components/admin/add-credits-modal'
 
 interface UserProfile {
   id: string
@@ -32,6 +33,7 @@ export default function UserProfilePage() {
   
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showAddCreditsModal, setShowAddCreditsModal] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -223,10 +225,22 @@ export default function UserProfilePage() {
       {/* Active Passes */}
       <Card>
         <CardHeader>
-          <CardTitle>Class Passes</CardTitle>
-          <CardDescription>
-            All purchased class packages
-          </CardDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle>Class Passes</CardTitle>
+              <CardDescription>
+                All purchased class packages
+              </CardDescription>
+            </div>
+            <Button 
+              size="sm" 
+              onClick={() => setShowAddCreditsModal(true)}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Credits
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {userProfile?.purchases && userProfile.purchases.length > 0 ? (
@@ -342,6 +356,19 @@ export default function UserProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Add Credits Modal */}
+      {showAddCreditsModal && userProfile && (
+        <AddCreditsModal
+          userId={userId}
+          userName={userProfile.display_name}
+          onClose={() => setShowAddCreditsModal(false)}
+          onSuccess={() => {
+            setShowAddCreditsModal(false)
+            fetchUserProfile() // Refresh the data
+          }}
+        />
+      )}
     </div>
   )
 }
