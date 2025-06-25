@@ -95,7 +95,7 @@ export default function DashboardPage() {
     if (!user) return
 
     // Subscribe to changes in user_purchases table
-    subscriptionRef.current = supabase
+    const channel = supabase
       .channel('user_purchases_changes')
       .on(
         'postgres_changes',
@@ -112,10 +112,10 @@ export default function DashboardPage() {
       )
       .subscribe()
 
+    subscriptionRef.current = channel
+
     return () => {
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current)
-      }
+      channel.unsubscribe()
     }
   }, [user, supabase])
 

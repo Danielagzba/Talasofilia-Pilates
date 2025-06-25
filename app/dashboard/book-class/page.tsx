@@ -151,7 +151,7 @@ export default function BookClassPage() {
     if (!user) return
 
     // Subscribe to changes in user_purchases table
-    subscriptionRef.current = supabase
+    const channel = supabase
       .channel('book_class_purchases_changes')
       .on(
         'postgres_changes',
@@ -168,10 +168,10 @@ export default function BookClassPage() {
       )
       .subscribe()
 
+    subscriptionRef.current = channel
+
     return () => {
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current)
-      }
+      channel.unsubscribe()
     }
   }, [user, supabase, fetchUserPurchases])
 
