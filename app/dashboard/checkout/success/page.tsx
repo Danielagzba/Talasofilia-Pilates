@@ -13,15 +13,20 @@ export default function CheckoutSuccessPage() {
   const [loading, setLoading] = useState(true)
   const [purchase, setPurchase] = useState<any>(null)
   const searchParams = useSearchParams()
+  
+  // Handle both Stripe (session_id) and MercadoPago (payment_id) parameters
   const sessionId = searchParams.get('session_id')
+  const paymentId = searchParams.get('payment_id')
+  const status = searchParams.get('status')
+  
   const { user } = useAuth()
   const supabase = createClient()
 
   useEffect(() => {
-    if (user && sessionId) {
+    if (user && (sessionId || (paymentId && status === 'approved'))) {
       checkPurchase()
     }
-  }, [user, sessionId])
+  }, [user, sessionId, paymentId, status])
 
   const checkPurchase = async () => {
     try {

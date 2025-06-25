@@ -6,7 +6,6 @@ import { Button } from '../../../components/ui/button'
 import { Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '../../../lib/supabase'
-import { getStripeJs } from '../../../lib/stripe'
 import { useRouter } from 'next/navigation'
 
 interface ClassPackage {
@@ -58,33 +57,36 @@ export default function BuyClassesPage() {
       // Get the current session to include auth token
       const { data: { session } } = await supabase.auth.getSession()
       
-      const response = await fetch('/api/stripe/checkout', {
+      console.log('Sending checkout request with session:', !!session)
+      
+      const response = await fetch('/api/mercadopago/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
         },
         body: JSON.stringify({ packageId }),
+        credentials: 'include' // Include cookies for authentication
       })
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Failed to create checkout session')
+        console.error('Checkout API error:', error)
+        throw new Error(error.details || error.error || 'Failed to create payment preference')
       }
 
-      const { sessionId, url } = await response.json()
+      const { initPoint, sandboxInitPoint } = await response.json()
 
-      if (url) {
-        // Redirect to Stripe Checkout
-        window.location.href = url
-      } else {
-        // Fallback to client-side redirect
-        const stripe = await getStripeJs()
-        if (!stripe) throw new Error('Stripe failed to load')
-
-        const { error } = await stripe.redirectToCheckout({ sessionId })
-        if (error) throw error
+      // Redirect to MercadoPago Checkout
+      // Use sandboxInitPoint for testing, initPoint for production
+      const checkoutUrl = process.env.NODE_ENV === 'production' ? initPoint : (sandboxInitPoint || initPoint)
+      
+      // Show a message about test mode if in development
+      if (process.env.NODE_ENV !== 'production') {
+        toast.info('Opening Mercado Pago in test mode. Use a different account or test user to complete the purchase.')
       }
+      
+      window.location.href = checkoutUrl
     } catch (error) {
       console.error('Purchase error:', error)
       toast.error('Failed to start checkout process')
