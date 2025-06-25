@@ -55,7 +55,18 @@ export async function middleware(request: NextRequest) {
   )
 
   // Refresh session if expired - required for Server Components
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Special handling for checkout success/pending pages
+  const isCheckoutReturn = request.nextUrl.pathname.startsWith('/dashboard/checkout/')
+  
+  // If user is not authenticated and trying to access checkout return pages,
+  // redirect to login with a return URL
+  if (!user && isCheckoutReturn) {
+    const redirectUrl = new URL('/login', request.url)
+    redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname + request.nextUrl.search)
+    return NextResponse.redirect(redirectUrl)
+  }
 
   return response
 }
