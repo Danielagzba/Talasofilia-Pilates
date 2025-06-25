@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   Menu,
   User,
@@ -27,10 +28,25 @@ export function SiteHeader() {
   const isMobile = useMobile();
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
-    await signOut();
-    router.push("/");
+    if (isSigningOut) return; // Prevent multiple clicks
+    
+    console.log("Sign out clicked");
+    setIsSigningOut(true);
+    
+    try {
+      await signOut();
+      console.log("Sign out successful");
+      
+      // Navigate to home page after successful sign out
+      router.push("/");
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+    } finally {
+      setIsSigningOut(false);
+    }
   };
 
   return (
@@ -108,8 +124,9 @@ export function SiteHeader() {
                         onClick={handleSignOut}
                         variant="outline"
                         className="mt-4 w-full rounded-none"
+                        disabled={isSigningOut}
                       >
-                        Sign Out
+                        {isSigningOut ? "Signing out..." : "Sign Out"}
                       </Button>
                     </div>
                   </>
@@ -209,11 +226,15 @@ export function SiteHeader() {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={handleSignOut}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleSignOut();
+                    }}
                     className="cursor-pointer"
+                    disabled={isSigningOut}
                   >
                     <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
+                    {isSigningOut ? "Signing out..." : "Sign Out"}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
