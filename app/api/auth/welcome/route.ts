@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         const { data: profile } = await supabaseAdmin
             .from('user_profiles')
             .select('display_name')
-            .eq('user_id', userId)
+            .eq('id', userId)
             .single()
 
         const userName = profile?.display_name || userData.user.email?.split('@')[0] || 'there'

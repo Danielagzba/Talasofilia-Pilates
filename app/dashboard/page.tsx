@@ -7,8 +7,9 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
-import { User, Mail, Camera, ShoppingBag, Calendar, Loader2 } from 'lucide-react'
+import { User, Mail, Camera, ShoppingBag, Calendar, Loader2, History } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { createClient } from '../../lib/supabase'
 
@@ -35,6 +36,7 @@ interface UpcomingClass {
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [displayName, setDisplayName] = useState('')
   const [photoURL, setPhotoURL] = useState('')
@@ -268,6 +270,49 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Button
+          asChild
+          variant="outline"
+          className="h-auto py-4 px-4 flex flex-col items-center gap-2 rounded-none"
+        >
+          <Link href="/dashboard/book-class">
+            <Calendar className="h-6 w-6" />
+            <span className="text-xs">Book Class</span>
+          </Link>
+        </Button>
+        <Button
+          asChild
+          variant="outline"
+          className="h-auto py-4 px-4 flex flex-col items-center gap-2 rounded-none"
+        >
+          <Link href="/dashboard/my-classes">
+            <User className="h-6 w-6" />
+            <span className="text-xs">My Classes</span>
+          </Link>
+        </Button>
+        <Button
+          asChild
+          variant="outline"
+          className="h-auto py-4 px-4 flex flex-col items-center gap-2 rounded-none"
+        >
+          <Link href="/dashboard/buy-classes">
+            <ShoppingBag className="h-6 w-6" />
+            <span className="text-xs">Buy Classes</span>
+          </Link>
+        </Button>
+        <Button
+          asChild
+          variant="outline"
+          className="h-auto py-4 px-4 flex flex-col items-center gap-2 rounded-none"
+        >
+          <Link href="/dashboard/purchase-history">
+            <History className="h-6 w-6" />
+            <span className="text-xs">History</span>
+          </Link>
+        </Button>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Profile Information</CardTitle>
@@ -348,7 +393,7 @@ export default function DashboardPage() {
       </Card>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <Card>
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/purchases')}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShoppingBag className="h-5 w-5" />
@@ -393,7 +438,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/classes')}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />

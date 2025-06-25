@@ -24,13 +24,19 @@ export const metadata: Metadata = {
         'A modern Pilates experience in the heart of Puerto Escondido, focused on mindful movement and personal transformation.',
 }
 
+export const viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+}
+
 export default function RootLayout({
     children,
 }: Readonly<{
     children: React.ReactNode
 }>) {
     return (
-        <html lang="en">
+        <html lang="en" suppressHydrationWarning>
             <body
                 className={`${inter.variable} ${playfair.variable} font-sans`}
             >

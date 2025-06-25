@@ -6,7 +6,9 @@ import { useAuth } from '../../../contexts/auth-context'
 import { useAdmin } from '../../../hooks/use-admin'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
 import { createClient } from '../../../lib/supabase'
-import { Loader2, Users, Calendar, ShoppingBag, TrendingUp } from 'lucide-react'
+import { Loader2, Users, Calendar, ShoppingBag, TrendingUp, Shield, FileText, Settings } from 'lucide-react'
+import { Button } from '../../../components/ui/button'
+import Link from 'next/link'
 
 interface DashboardStats {
   totalUsers: number
@@ -262,6 +264,52 @@ export default function AdminDashboardPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Quick Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Button
+            asChild
+            variant="outline"
+            className="h-auto py-4 px-4 flex flex-col items-center gap-2 rounded-none"
+          >
+            <Link href="/dashboard/admin/classes">
+              <Calendar className="h-6 w-6" />
+              <span className="text-xs text-center">Manage Classes</span>
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="h-auto py-4 px-4 flex flex-col items-center gap-2 rounded-none"
+          >
+            <Link href="/dashboard/admin/templates">
+              <FileText className="h-6 w-6" />
+              <span className="text-xs text-center">Class Templates</span>
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="h-auto py-4 px-4 flex flex-col items-center gap-2 rounded-none"
+          >
+            <Link href="/dashboard/admin/users">
+              <Users className="h-6 w-6" />
+              <span className="text-xs text-center">Manage Users</span>
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="h-auto py-4 px-4 flex flex-col items-center gap-2 rounded-none"
+          >
+            <Link href="/dashboard/admin/settings">
+              <Settings className="h-6 w-6" />
+              <span className="text-xs text-center">Settings</span>
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   )

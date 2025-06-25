@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '../../components/ui/button'
@@ -14,8 +14,18 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const { signIn, signUp } = useAuth()
+  const { signIn, signUp, user, loading: authLoading } = useAuth()
   const router = useRouter()
+
+  // Redirect when user is authenticated
+  useEffect(() => {
+    console.log('Login page - Auth state:', { user: user?.email, authLoading })
+    if (user) {
+      console.log('User authenticated, redirecting to dashboard')
+      router.push('/dashboard')
+      router.refresh()
+    }
+  }, [user, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,7 +38,7 @@ export default function LoginPage() {
           toast.error(error.message)
         } else {
           toast.success('Welcome back!')
-          router.push('/dashboard')
+          // The useEffect will handle the redirect when user state updates
         }
       } else {
         const { error } = await signUp(email, password)
@@ -43,6 +53,28 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="pt-16 min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If user is already authenticated, show loading while redirecting
+  if (user) {
+    return (
+      <div className="pt-16 min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <p className="text-muted-foreground">Redirecting to dashboard...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
