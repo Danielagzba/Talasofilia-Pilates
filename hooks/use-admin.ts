@@ -31,12 +31,18 @@ export function useAdmin() {
       try {
         const response = await fetch('/api/auth/check-admin');
         
-        if (!response.ok) {
+        if (!response.ok && response.status !== 200) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log("[useAdmin] Admin status:", data.isAdmin);
+        console.log("[useAdmin] Admin check response:", data);
+        
+        if (data.error) {
+          console.error("[useAdmin] Server returned error:", data.error);
+          setError(data.error);
+        }
+        
         setIsAdmin(data.isAdmin);
         checkedRef.current = user.id;
       } catch (err) {
