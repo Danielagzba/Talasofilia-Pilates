@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../../contexts/auth-context'
 import { useAdmin } from '../../hooks/use-admin'
 import Link from 'next/link'
-import { User, Calendar, ShoppingBag, History, Loader2, Shield, Users, Settings, FileText } from 'lucide-react'
+import { User, Calendar, ShoppingBag, History, Loader2, Shield, Users, Settings, FileText, LogOut } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { usePathname } from 'next/navigation'
+import { Button } from '../../components/ui/button'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: User },
@@ -30,27 +31,52 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { user, loading } = useAuth()
-  const { isAdmin } = useAdmin()
+  const { user, loading, signOut } = useAuth()
+  const { isAdmin, loading: adminLoading, error: adminError } = useAdmin()
   const router = useRouter()
   const pathname = usePathname()
+  const [isRedirecting, setIsRedirecting] = useState(false)
+
+  console.log('[DashboardLayout] Render:', {
+    userId: user?.id,
+    authLoading: loading,
+    isAdmin,
+    adminLoading,
+    adminError,
+    pathname,
+    timestamp: new Date().toISOString()
+  })
 
   useEffect(() => {
-    if (!loading && !user) {
+    // Only redirect if we're sure there's no user after loading
+    if (!loading && !user && !isRedirecting) {
+      setIsRedirecting(true)
       router.push('/login')
     }
-  }, [user, loading, router])
+  }, [user, loading, router, isRedirecting])
 
+  // Show loading state while auth is being checked
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="min-h-screen flex items-center justify-center bg-stone-50">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">Loading your dashboard...</p>
+        </div>
       </div>
     )
   }
 
-  if (!user) {
-    return null
+  // Don't render anything if redirecting to login
+  if (!user || isRedirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-50">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">Redirecting to login...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -105,6 +131,22 @@ export default function DashboardLayout({
                   </div>
                 </>
               )}
+              
+              <div className="border-t mt-6 pt-6">
+                <Button
+                  onClick={async () => {
+                    await signOut()
+                    router.push('/')
+                    // Force reload to clear state
+                    window.location.href = '/'
+                  }}
+                  variant="ghost"
+                  className="w-full justify-start text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+                >
+                  <LogOut className="mr-3 h-4 w-4" />
+                  Sign Out
+                </Button>
+              </div>
             </nav>
           </aside>
           <main className="md:col-span-3 bg-white p-6 md:p-8 shadow-sm">
