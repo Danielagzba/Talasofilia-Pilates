@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useAuth } from '../../contexts/auth-context'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -34,15 +34,32 @@ interface UpcomingClass {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth()
+  console.log('[Dashboard v2] Component rendering...') // Version 2 to force cache refresh
+  const authContext = useAuth()
+  const { user } = authContext
+  console.log('[Dashboard v2] Auth context:', { user: user?.id, loading: authContext.loading })
+  
   const [loading, setLoading] = useState(false)
   const [displayName, setDisplayName] = useState('')
   const [photoURL, setPhotoURL] = useState('')
   const [userPurchases, setUserPurchases] = useState<UserPurchase[]>([])
   const [upcomingClasses, setUpcomingClasses] = useState<UpcomingClass[]>([])
   const [dataLoading, setDataLoading] = useState(true)
-  const supabase = createClient()
   const subscriptionRef = useRef<any>(null)
+  
+  console.log('[Dashboard] Initial render - user:', user?.id, 'dataLoading:', dataLoading)
+  
+  // Failsafe to prevent infinite loading
+  useEffect(() => {
+    const failsafeTimeout = setTimeout(() => {
+      if (dataLoading) {
+        console.error('[Dashboard] Failsafe timeout triggered - forcing dataLoading to false')
+        setDataLoading(false)
+      }
+    }, 15000) // 15 seconds max
+    
+    return () => clearTimeout(failsafeTimeout)
+  }, [])
 
   useEffect(() => {
     if (user?.user_metadata) {
@@ -52,14 +69,22 @@ export default function DashboardPage() {
   }, [user])
 
   useEffect(() => {
-    console.log('[Dashboard] User effect triggered, user:', user?.id)
+    console.log('[Dashboard] User effect triggered, user:', user?.id, 'auth loading:', authContext.loading)
+    
+    // If auth is still loading, wait for it
+    if (authContext.loading) {
+      console.log('[Dashboard] Auth is still loading, waiting...')
+      return
+    }
+    
     if (user) {
       fetchUserData()
     } else {
       // No user, make sure loading is false
+      console.log('[Dashboard] No user and auth not loading, setting dataLoading to false')
       setDataLoading(false)
     }
-  }, [user])
+  }, [user, authContext.loading])
 
   // Refresh data when page gains focus or becomes visible
   useEffect(() => {
@@ -98,8 +123,19 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return
 
+    console.log('[Dashboard] Setting up real-time subscription...')
+    // Create a fresh Supabase client for subscriptions
+    let subscriptionClient
+    try {
+      subscriptionClient = createClient()
+      console.log('[Dashboard] Subscription client created')
+    } catch (error) {
+      console.error('[Dashboard] Error creating subscription client:', error)
+      return
+    }
+    
     // Subscribe to changes in user_purchases table
-    const channel = supabase
+    const channel = subscriptionClient
       .channel('user_purchases_changes')
       .on(
         'postgres_changes',
@@ -114,81 +150,65 @@ export default function DashboardPage() {
           fetchUserData()
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('[Dashboard] Subscription status:', status)
+      })
 
     subscriptionRef.current = channel
 
     return () => {
+      console.log('[Dashboard] Unsubscribing from real-time updates')
       channel.unsubscribe()
     }
-  }, [user, supabase])
+  }, [user?.id])
 
   const fetchUserData = async () => {
-    console.log('[Dashboard] fetchUserData called, user:', user?.id)
+    const startTime = Date.now()
+    console.log(`[Dashboard ${startTime}] fetchUserData called, user:`, user?.id)
     if (!user) {
-      console.log('[Dashboard] No user, skipping fetch')
+      console.log(`[Dashboard ${startTime}] No user, skipping fetch`)
       setDataLoading(false)
       return
     }
     
+    // Set a timeout to ensure we don't hang forever
+    const timeoutId = setTimeout(() => {
+      console.error(`[Dashboard ${startTime}] Fetch timeout after ${Date.now() - startTime}ms - setting loading to false`)
+      setDataLoading(false)
+    }, 10000) // 10 second timeout
+    
     try {
-      // Fetch active purchases (including those with 0 classes remaining)
-      console.log('[Dashboard] Fetching purchases...')
-      const { data: purchases, error: purchasesError } = await supabase
-        .from('user_purchases')
-        .select(`
-          *,
-          class_packages (
-            name
-          )
-        `)
-        .eq('user_id', user!.id)
-        .eq('payment_status', 'completed')
-        .gte('expiry_date', new Date().toISOString())
-        .gte('classes_remaining', 0) // Changed from gt to gte to include 0
-        .order('expiry_date', { ascending: true })
-
-      if (purchasesError) {
-        console.error('[Dashboard] Error fetching purchases:', purchasesError)
-      } else if (purchases) {
-        console.log('[Dashboard] User purchases:', purchases)
-        setUserPurchases(purchases)
+      console.log(`[Dashboard ${startTime}] Fetching from API route... (${Date.now() - startTime}ms)`)
+      
+      const response = await fetch('/api/dashboard/data', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      console.log(`[Dashboard ${startTime}] API response received (${Date.now() - startTime}ms), status:`, response.status)
+      
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`)
       }
-
-      // Fetch upcoming classes
-      const { data: bookings, error: bookingsError } = await supabase
-        .from('class_bookings')
-        .select(`
-          *,
-          class_schedules (
-            class_name,
-            class_date,
-            start_time,
-            instructor_name
-          )
-        `)
-        .eq('user_id', user!.id)
-        .eq('booking_status', 'confirmed')
-        .order('class_schedules(class_date)', { ascending: true })
-        .order('class_schedules(start_time)', { ascending: true })
-
-      if (bookingsError) {
-        console.error('[Dashboard] Error fetching bookings:', bookingsError)
-      } else if (bookings) {
-        console.log('[Dashboard] Bookings fetched:', bookings.length)
-        // Filter for future classes only
-        const now = new Date()
-        const upcoming = bookings.filter(booking => {
-          const classDate = new Date(`${booking.class_schedules.class_date} ${booking.class_schedules.start_time}`)
-          return classDate > now
-        })
-        console.log('[Dashboard] Upcoming classes:', upcoming.length)
-        setUpcomingClasses(upcoming)
-      }
+      
+      const data = await response.json()
+      console.log(`[Dashboard ${startTime}] API data parsed (${Date.now() - startTime}ms)`)
+      
+      console.log('[Dashboard] User purchases:', data.purchases)
+      setUserPurchases(data.purchases || [])
+      
+      console.log('[Dashboard] Upcoming classes:', data.upcomingClasses?.length || 0)
+      setUpcomingClasses(data.upcomingClasses || [])
+      
     } catch (error) {
-      console.error('[Dashboard] Error fetching user data:', error)
+      console.error(`[Dashboard ${startTime}] Error fetching user data:`, error)
+      setUserPurchases([])
+      setUpcomingClasses([])
     } finally {
-      console.log('[Dashboard] Setting dataLoading to false')
+      clearTimeout(timeoutId)
+      console.log(`[Dashboard ${startTime}] Setting dataLoading to false (${Date.now() - startTime}ms)`)
       setDataLoading(false)
     }
   }
@@ -212,6 +232,8 @@ export default function DashboardPage() {
 
     setLoading(true)
     try {
+      const supabase = createClient()
+      
       // Delete old avatar if exists
       if (user.user_metadata?.avatar_url) {
         const oldPath = user.user_metadata.avatar_url.split('/').slice(-2).join('/')
@@ -254,6 +276,7 @@ export default function DashboardPage() {
 
     setLoading(true)
     try {
+      const supabase = createClient()
       const { error } = await supabase.auth.updateUser({
         data: { display_name: displayName }
       })
