@@ -96,7 +96,17 @@ export async function POST(request: NextRequest) {
       notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/mercadopago/webhook`,
       expires: true,
       expiration_date_from: new Date().toISOString(),
-      expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+      expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+      payment_methods: {
+        excluded_payment_types: [
+          { id: 'ticket' },
+          { id: 'atm' }
+        ],
+        installments: 1,
+        default_installments: 1
+      },
+      binary_mode: true, // Instant approval or rejection
+      marketplace: 'NONE'
     }
 
     console.log('Creating MercadoPago preference with data:', JSON.stringify(preferenceData, null, 2))

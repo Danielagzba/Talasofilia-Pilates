@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '../../../components/ui/button'
 import { Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { createClient } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 
 interface ClassPackage {
@@ -23,7 +22,6 @@ export default function BuyClassesPage() {
   const [loading, setLoading] = useState(true)
   const [purchasingId, setPurchasingId] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     fetchPackages()
@@ -31,19 +29,24 @@ export default function BuyClassesPage() {
 
   const fetchPackages = async () => {
     try {
-      const { data, error } = await supabase
-        .from('class_packages')
-        .select('*')
-        .eq('is_active', true)
-        .order('number_of_classes', { ascending: true })
-
-      if (error) throw error
-
-      if (data) {
-        setPackages(data)
+      console.log('[BuyClasses] Fetching packages...')
+      
+      const response = await fetch('/api/packages', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch packages')
       }
+      
+      const { packages } = await response.json()
+      console.log('[BuyClasses] Received packages:', packages.length)
+      setPackages(packages)
     } catch (error) {
-      console.error('Error fetching packages:', error)
+      console.error('[BuyClasses] Error fetching packages:', error)
       toast.error('Failed to load class packages')
     } finally {
       setLoading(false)
@@ -54,16 +57,12 @@ export default function BuyClassesPage() {
     setPurchasingId(packageId)
     
     try {
-      // Get the current session to include auth token
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      console.log('Sending checkout request with session:', !!session)
+      console.log('[BuyClasses] Starting checkout for package:', packageId)
       
       const response = await fetch('/api/mercadopago/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
         },
         body: JSON.stringify({ packageId }),
         credentials: 'include' // Include cookies for authentication

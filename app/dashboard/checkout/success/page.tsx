@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { Button } from '../../../../components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../../../components/ui/card'
 import { CheckCircle, Loader2 } from 'lucide-react'
-import { createClient } from '../../../../lib/supabase'
 import { useAuth } from '../../../../contexts/auth-context'
 
 export default function CheckoutSuccessPage() {
@@ -20,7 +19,6 @@ export default function CheckoutSuccessPage() {
   const status = searchParams.get('status')
   
   const { user } = useAuth()
-  const supabase = createClient()
 
   useEffect(() => {
     if (user && (sessionId || (paymentId && status === 'approved'))) {
@@ -30,30 +28,32 @@ export default function CheckoutSuccessPage() {
 
   const checkPurchase = async () => {
     try {
+      console.log('[CheckoutSuccess] Starting purchase check...')
+      
       // Wait a moment for webhook to process
       await new Promise(resolve => setTimeout(resolve, 2000))
 
-      // Get the most recent purchase for this user
-      const { data, error } = await supabase
-        .from('user_purchases')
-        .select(`
-          *,
-          class_packages (
-            name,
-            number_of_classes
-          )
-        `)
-        .eq('user_id', user!.id)
-        .eq('payment_status', 'completed')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (!error && data) {
-        setPurchase(data)
+      // Fetch purchase data from API route
+      const response = await fetch('/api/checkout/verify-purchase', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      console.log('[CheckoutSuccess] API response status:', response.status)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('[CheckoutSuccess] Purchase data:', data.purchase?.id)
+        if (data.purchase) {
+          setPurchase(data.purchase)
+        }
+      } else {
+        console.error('[CheckoutSuccess] Failed to fetch purchase')
       }
     } catch (error) {
-      console.error('Error checking purchase:', error)
+      console.error('[CheckoutSuccess] Error checking purchase:', error)
     } finally {
       setLoading(false)
     }
