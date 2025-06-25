@@ -41,17 +41,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           loadingRef.current = false
           console.log('Auth initialization complete from getSession')
         } else {
-          console.log('No session from getSession, waiting for onAuthStateChange')
-          // Don't set loading to false - wait for onAuthStateChange
+          console.log('No session from getSession')
+          // Set loading to false if there's no session
+          setLoading(false)
+          loadingRef.current = false
         }
       } catch (error) {
         console.error('Error initializing auth:', error)
-        // Don't set loading to false here - wait for onAuthStateChange
+        // Set loading to false on error
+        setLoading(false)
+        loadingRef.current = false
       }
     }
 
     // Initialize auth
     initializeAuth()
+
+    // Timeout to ensure loading state doesn't get stuck
+    const loadingTimeout = setTimeout(() => {
+      if (loadingRef.current && mounted) {
+        console.log('Auth initialization timeout - setting loading to false')
+        setLoading(false)
+        loadingRef.current = false
+      }
+    }, 5000) // 5 second timeout
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.id, 'loadingRef:', loadingRef.current)
@@ -118,6 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false
+      clearTimeout(loadingTimeout)
       subscription.unsubscribe()
     }
   }, [supabase])
@@ -147,7 +161,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear user state immediately
       setUser(null)
       
-      // Sign out from Supabase and wait for completion
+      // Call the server-side sign out endpoint to clear cookies properly
+      const response = await fetch('/api/auth/signout', {
+        method: 'POST',
+        credentials: 'include'
+      })
+      
+      if (!response.ok) {
+        console.error('Server sign out failed')
+      }
+      
+      // Also sign out from client-side Supabase
       const { error } = await supabase.auth.signOut()
       
       if (error) {
@@ -168,6 +192,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
         keysToRemove.forEach(key => localStorage.removeItem(key))
+        
+        // Also clear session storage
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i)
+          if (key && key.includes('supabase')) {
+            sessionStorage.removeItem(key)
+          }
+        }
+        
+        // Clear all cookies that might contain session data
+        // This is important for SSR where Supabase uses cookies
+        document.cookie.split(";").forEach(cookie => {
+          const eqPos = cookie.indexOf("=")
+          const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim()
+          // Clear cookies that might be related to Supabase auth
+          if (name.includes('supabase') || name.includes('auth-token') || name.includes('sb-')) {
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
+            // Also try with domain variations
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname};`
+          }
+        })
       }
     } catch (error) {
       console.error('Sign out error:', error)
