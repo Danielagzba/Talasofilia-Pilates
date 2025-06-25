@@ -52,8 +52,12 @@ export default function DashboardPage() {
   }, [user])
 
   useEffect(() => {
+    console.log('[Dashboard] User effect triggered, user:', user?.id)
     if (user) {
       fetchUserData()
+    } else {
+      // No user, make sure loading is false
+      setDataLoading(false)
     }
   }, [user])
 
@@ -120,8 +124,16 @@ export default function DashboardPage() {
   }, [user, supabase])
 
   const fetchUserData = async () => {
+    console.log('[Dashboard] fetchUserData called, user:', user?.id)
+    if (!user) {
+      console.log('[Dashboard] No user, skipping fetch')
+      setDataLoading(false)
+      return
+    }
+    
     try {
       // Fetch active purchases (including those with 0 classes remaining)
+      console.log('[Dashboard] Fetching purchases...')
       const { data: purchases, error: purchasesError } = await supabase
         .from('user_purchases')
         .select(`
@@ -136,8 +148,10 @@ export default function DashboardPage() {
         .gte('classes_remaining', 0) // Changed from gt to gte to include 0
         .order('expiry_date', { ascending: true })
 
-      if (!purchasesError && purchases) {
-        console.log('User purchases:', purchases)
+      if (purchasesError) {
+        console.error('[Dashboard] Error fetching purchases:', purchasesError)
+      } else if (purchases) {
+        console.log('[Dashboard] User purchases:', purchases)
         setUserPurchases(purchases)
       }
 
@@ -158,18 +172,23 @@ export default function DashboardPage() {
         .order('class_schedules(class_date)', { ascending: true })
         .order('class_schedules(start_time)', { ascending: true })
 
-      if (!bookingsError && bookings) {
+      if (bookingsError) {
+        console.error('[Dashboard] Error fetching bookings:', bookingsError)
+      } else if (bookings) {
+        console.log('[Dashboard] Bookings fetched:', bookings.length)
         // Filter for future classes only
         const now = new Date()
         const upcoming = bookings.filter(booking => {
           const classDate = new Date(`${booking.class_schedules.class_date} ${booking.class_schedules.start_time}`)
           return classDate > now
         })
+        console.log('[Dashboard] Upcoming classes:', upcoming.length)
         setUpcomingClasses(upcoming)
       }
     } catch (error) {
-      console.error('Error fetching user data:', error)
+      console.error('[Dashboard] Error fetching user data:', error)
     } finally {
+      console.log('[Dashboard] Setting dataLoading to false')
       setDataLoading(false)
     }
   }
