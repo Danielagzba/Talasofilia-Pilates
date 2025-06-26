@@ -3,6 +3,11 @@ import { getPayment } from '@/lib/mercadopago'
 import { createClient } from '@/lib/supabase/server'
 import { sendPurchaseConfirmation } from '@/lib/email-service'
 
+// Add GET method for health check
+export async function GET() {
+  return NextResponse.json({ status: 'ok', message: 'MercadoPago webhook is ready' })
+}
+
 export async function POST(request: NextRequest) {
   console.log('[MercadoPago Webhook] Received webhook call')
   
