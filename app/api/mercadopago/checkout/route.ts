@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         numberOfClasses: packageData.number_of_classes,
         validityDays: packageData.validity_days,
       }),
-      notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/mercadopago/webhook`,
+      notification_url: `${process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')}/api/mercadopago/webhook`,
       expires: true,
       expiration_date_from: new Date().toISOString(),
       expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
