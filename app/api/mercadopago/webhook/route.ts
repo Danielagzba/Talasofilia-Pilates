@@ -4,8 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { sendPurchaseConfirmation } from '@/lib/email-service'
 
 export async function POST(request: NextRequest) {
+  console.log('[MercadoPago Webhook] Received webhook call')
+  
   try {
     const body = await request.json()
+    console.log('[MercadoPago Webhook] Body:', JSON.stringify(body, null, 2))
     
     // Verify webhook signature if configured
     const signature = request.headers.get('x-signature')
@@ -14,6 +17,7 @@ export async function POST(request: NextRequest) {
     // MercadoPago sends different types of notifications
     // We're interested in payment notifications
     if (body.type !== 'payment' || !body.data?.id) {
+      console.log('[MercadoPago Webhook] Not a payment notification, ignoring')
       return NextResponse.json({ received: true })
     }
 
@@ -26,7 +30,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Payment system not configured' }, { status: 503 })
     }
     
-    const paymentData = await payment.get({ id: paymentId })
+    let paymentData
+    try {
+      paymentData = await payment.get({ id: paymentId })
+    } catch (paymentError) {
+      console.error('[MercadoPago Webhook] Failed to get payment details:', paymentError)
+      return NextResponse.json({ error: 'Failed to retrieve payment' }, { status: 500 })
+    }
     
     console.log('MercadoPago payment notification:', {
       id: paymentId,
