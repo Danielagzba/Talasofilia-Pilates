@@ -11,6 +11,7 @@ import { useAuth } from '../../../../contexts/auth-context'
 export default function CheckoutSuccessPage() {
   const [loading, setLoading] = useState(true)
   const [purchase, setPurchase] = useState<any>(null)
+  const [retryCount, setRetryCount] = useState(0)
   const searchParams = useSearchParams()
   
   // Handle both Stripe (session_id) and MercadoPago (payment_id) parameters
@@ -28,10 +29,11 @@ export default function CheckoutSuccessPage() {
 
   const checkPurchase = async () => {
     try {
-      console.log('[CheckoutSuccess] Starting purchase check...')
+      console.log('[CheckoutSuccess] Starting purchase check, attempt:', retryCount + 1)
       
-      // Wait a moment for webhook to process
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Wait a moment for webhook to process (longer on retries)
+      const waitTime = retryCount === 0 ? 2000 : 3000
+      await new Promise(resolve => setTimeout(resolve, waitTime))
 
       // Fetch purchase data from API route
       const response = await fetch('/api/checkout/verify-purchase', {
@@ -48,13 +50,23 @@ export default function CheckoutSuccessPage() {
         console.log('[CheckoutSuccess] Purchase data:', data.purchase?.id)
         if (data.purchase) {
           setPurchase(data.purchase)
+          setLoading(false)
+        } else if (retryCount < 3) {
+          // No purchase found yet, retry up to 3 times
+          console.log('[CheckoutSuccess] No purchase found, retrying...')
+          setRetryCount(prev => prev + 1)
+          setTimeout(() => checkPurchase(), 2000)
+        } else {
+          // Max retries reached
+          console.error('[CheckoutSuccess] Purchase not found after retries')
+          setLoading(false)
         }
       } else {
         console.error('[CheckoutSuccess] Failed to fetch purchase')
+        setLoading(false)
       }
     } catch (error) {
       console.error('[CheckoutSuccess] Error checking purchase:', error)
-    } finally {
       setLoading(false)
     }
   }
@@ -83,7 +95,7 @@ export default function CheckoutSuccessPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center">
-          {purchase && (
+          {purchase ? (
             <div className="space-y-4">
               <div className="bg-stone-100 p-4 rounded">
                 <p className="font-medium text-lg">{purchase.class_packages.name}</p>
@@ -96,6 +108,15 @@ export default function CheckoutSuccessPage() {
               </div>
               <p className="text-sm text-muted-foreground">
                 A confirmation email has been sent to {user?.email}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-muted-foreground">
+                Your payment was successful! Your purchase details will be available shortly.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                If you don't see your purchase within a few minutes, please refresh this page or contact support.
               </p>
             </div>
           )}

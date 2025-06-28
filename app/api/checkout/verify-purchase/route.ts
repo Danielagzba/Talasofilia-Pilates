@@ -31,16 +31,24 @@ export async function GET() {
       .eq('payment_status', 'completed')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single()
     
     if (error) {
       console.error('[Verify Purchase API] Purchase query error:', error)
       return NextResponse.json({ purchase: null })
     }
     
-    console.log('[Verify Purchase API] Purchase found:', data?.id)
+    // Check if we got any results
+    if (!data || data.length === 0) {
+      console.log('[Verify Purchase API] No purchase found yet for user:', user.id)
+      return NextResponse.json({ purchase: null })
+    }
     
-    return NextResponse.json({ purchase: data })
+    // Return the first purchase
+    const purchase = data[0]
+    
+    console.log('[Verify Purchase API] Purchase found:', purchase.id)
+    
+    return NextResponse.json({ purchase })
   } catch (error) {
     console.error('[Verify Purchase API] Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
