@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayment } from '@/lib/mercadopago'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { sendPurchaseConfirmation } from '@/lib/email-service'
 
 // Add GET method for health check
@@ -92,8 +92,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required metadata' }, { status: 400 })
     }
 
-    // Get Supabase client
-    const supabase = await createClient()
+    // Get Supabase service role client for webhook operations
+    const supabase = createServiceRoleClient()
 
     // Check if this payment has already been processed
     const { data: existingPurchase } = await supabase
