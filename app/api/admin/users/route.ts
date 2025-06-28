@@ -44,10 +44,18 @@ export async function GET() {
       // Continue without emails rather than failing completely
     }
     
-    // Create a map of user emails
+    // Create maps for user data from auth
     const emailMap = new Map()
+    const authDisplayNameMap = new Map()
     authData?.users?.forEach(user => {
       emailMap.set(user.id, user.email)
+      // Get display name from user metadata
+      const displayName = user.user_metadata?.display_name || 
+                         user.user_metadata?.full_name || 
+                         user.user_metadata?.name
+      if (displayName) {
+        authDisplayNameMap.set(user.id, displayName)
+      }
     })
     
     // Get all user IDs
@@ -80,12 +88,16 @@ export async function GET() {
     // Combine all data
     const usersWithData = profiles.map(profile => {
       const email = emailMap.get(profile.id)
-      const displayName = profile.display_name || email?.split('@')[0] || 'Unknown User'
+      const authDisplayName = authDisplayNameMap.get(profile.id)
+      
+      // Priority: auth display name > profile display name > email username
+      const displayName = authDisplayName || profile.display_name || email?.split('@')[0] || 'Unknown User'
       
       return {
         ...profile,
         email,
-        display_name: displayName, // Ensure display_name is never null
+        display_name: displayName, // Use auth display name if available
+        auth_display_name: authDisplayName, // Keep track of auth display name
         user_purchases: allPurchases?.filter(p => p.user_id === profile.id) || [],
         class_bookings: allBookings?.filter(b => b.user_id === profile.id) || []
       }
