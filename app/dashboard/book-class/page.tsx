@@ -48,23 +48,39 @@ export default function BookClassPage() {
 
   // Fetch user's purchases
   const fetchUserPurchases = useCallback(async () => {
-    if (!user) return
+    if (!user) {
+      console.log('No user found, skipping purchase fetch')
+      return
+    }
 
-    console.log('Fetching user purchases...')
+    console.log('Fetching user purchases for user:', user.id)
+    const currentDate = new Date().toISOString()
+    console.log('Current date for expiry check:', currentDate)
+    
+    // Debug: First fetch ALL purchases to see what's in the database
+    const { data: allPurchases } = await supabase
+      .from('user_purchases')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('payment_status', 'completed')
+    
+    console.log('DEBUG - All completed purchases:', allPurchases)
+    
     const { data, error } = await supabase
       .from('user_purchases')
       .select('*')
       .eq('user_id', user.id)
       .eq('payment_status', 'completed')
-      .gte('expiry_date', new Date().toISOString())
+      .gte('expiry_date', currentDate)
       .gt('classes_remaining', 0) // Only fetch packages with remaining classes
       .order('expiry_date', { ascending: true })
 
     if (error) {
       console.error('Error fetching purchases:', error)
-    } else if (data) {
+    } else {
       console.log('Fetched purchases:', data)
-      setUserPurchases(data)
+      console.log('Number of purchases:', data?.length || 0)
+      setUserPurchases(data || [])
     }
   }, [user, supabase])
 
