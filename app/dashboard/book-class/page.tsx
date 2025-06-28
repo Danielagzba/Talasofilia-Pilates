@@ -43,6 +43,7 @@ export default function BookClassPage() {
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month')
   const [currentMonth, setCurrentMonth] = useState(moment().startOf('month'))
   const [currentDay, setCurrentDay] = useState(moment())
+  const [bookingWindowHours, setBookingWindowHours] = useState(3) // Default 3 hours
   const supabase = createClient()
   const subscriptionRef = useRef<any>(null)
 
@@ -136,6 +137,27 @@ export default function BookClassPage() {
     fetchUserPurchases()
     fetchUserBookings()
   }, [fetchUserPurchases, fetchUserBookings])
+  
+  // Fetch booking window setting
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const { data } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'booking_window_hours')
+          .single()
+        
+        if (data) {
+          setBookingWindowHours(Number(data.value) || 3)
+        }
+      } catch (error) {
+        console.error('Error fetching booking window setting:', error)
+      }
+    }
+    
+    fetchSettings()
+  }, [])
 
   useEffect(() => {
     fetchClassSchedules()
@@ -483,12 +505,13 @@ export default function BookClassPage() {
                   const spotsAvailable = Math.max(0, schedule.max_capacity - currentBookings)
                   const classTime = moment(`${schedule.class_date} ${schedule.start_time}`)
                   const isPastClass = classTime.isBefore(moment())
+                  const isTooSoonToBook = classTime.diff(moment(), 'hours') < bookingWindowHours
                   
                   return (
                     <Card 
                       key={schedule.id}
-                      className={`cursor-pointer transition-all hover:shadow-md ${isPastClass ? 'opacity-50' : ''}`}
-                      onClick={() => !isPastClass && !isBooked && !isFull && handleSelectSchedule(schedule)}
+                      className={`cursor-pointer transition-all hover:shadow-md ${isPastClass || isTooSoonToBook ? 'opacity-50' : ''}`}
+                      onClick={() => !isPastClass && !isTooSoonToBook && !isBooked && !isFull && handleSelectSchedule(schedule)}
                     >
                       <CardContent className="p-6">
                         <div className="flex justify-between items-start">
@@ -514,6 +537,8 @@ export default function BookClassPage() {
                               <Badge variant="secondary" className="bg-red-100 text-red-800">Full</Badge>
                             ) : isPastClass ? (
                               <Badge variant="secondary">Past</Badge>
+                            ) : isTooSoonToBook ? (
+                              <Badge variant="secondary">Booking Closed</Badge>
                             ) : (
                               <div>
                                 <p className="text-lg font-medium">{spotsAvailable} spots left</p>
@@ -574,6 +599,7 @@ export default function BookClassPage() {
                       const spotsAvailable = Math.max(0, schedule.max_capacity - currentBookings)
                       const classTime = moment(`${schedule.class_date} ${schedule.start_time}`)
                       const isPastClass = classTime.isBefore(moment())
+                      const isTooSoonToBook = classTime.diff(moment(), 'hours') < bookingWindowHours
                       
                       return (
                         <div
@@ -581,9 +607,9 @@ export default function BookClassPage() {
                           className={`text-xs p-1 rounded cursor-pointer transition-all
                             ${isBooked ? 'bg-green-100 text-green-800' : 
                               isFull ? 'bg-red-100 text-red-800' : 
-                              isPastClass ? 'bg-gray-100 text-gray-500' : 
+                              isPastClass || isTooSoonToBook ? 'bg-gray-100 text-gray-500' : 
                               'bg-stone-100 hover:bg-stone-200'}`}
-                          onClick={() => !isPastClass && !isBooked && !isFull && handleSelectSchedule(schedule)}
+                          onClick={() => !isPastClass && !isTooSoonToBook && !isBooked && !isFull && handleSelectSchedule(schedule)}
                         >
                           <p className="font-medium text-[11px]">
                             {moment(schedule.start_time, 'HH:mm:ss').format('h:mm A')}

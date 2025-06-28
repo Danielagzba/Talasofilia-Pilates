@@ -42,6 +42,7 @@ export default function MyClassesPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<ClassBooking | null>(null)
+  const [cancellationWindowHours, setCancellationWindowHours] = useState(24) // Default 24 hours
   const supabase = createClient()
 
   const fetchBookings = useCallback(async () => {
@@ -111,6 +112,27 @@ export default function MyClassesPage() {
   useEffect(() => {
     fetchBookings()
   }, [fetchBookings])
+  
+  // Fetch cancellation window setting
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const { data } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'cancellation_window_hours')
+          .single()
+        
+        if (data) {
+          setCancellationWindowHours(Number(data.value) || 24)
+        }
+      } catch (error) {
+        console.error('Error fetching cancellation window setting:', error)
+      }
+    }
+    
+    fetchSettings()
+  }, [])
 
   const handleCancelClick = (booking: ClassBooking) => {
     setSelectedBooking(booking)
@@ -264,7 +286,7 @@ export default function MyClassesPage() {
               {upcomingClasses.map((booking) => {
                 const classDate = moment(`${booking.class_schedules.class_date} ${booking.class_schedules.start_time}`)
                 const endTime = moment(`${booking.class_schedules.class_date} ${booking.class_schedules.end_time}`)
-                const canCancel = classDate.diff(moment(), 'hours') >= 2
+                const canCancel = classDate.diff(moment(), 'hours') >= cancellationWindowHours
 
                 return (
                   <Card key={booking.id}>
@@ -309,7 +331,7 @@ export default function MyClassesPage() {
                       
                       {!canCancel && booking.booking_status === 'confirmed' && (
                         <p className="text-xs text-muted-foreground mt-4">
-                          Cancellation deadline has passed (2 hours before class)
+                          Cancellation deadline has passed ({cancellationWindowHours} hours before class)
                         </p>
                       )}
                     </CardContent>
