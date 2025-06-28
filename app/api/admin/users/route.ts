@@ -1,0 +1,99 @@
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
+
+export async function GET() {
+  try {
+    const supabase = await createClient()
+    
+    // Check if user is admin
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+    
+    if (!profile?.is_admin) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    
+    // Use service role to get auth.users data
+    const serviceSupabase = createServiceRoleClient()
+    
+    // Get all user profiles
+    const { data: profiles, error: profilesError } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError)
+      return NextResponse.json({ error: 'Failed to fetch profiles' }, { status: 500 })
+    }
+    
+    // Get auth users to get email addresses
+    const { data: authData, error: authError } = await serviceSupabase.auth.admin.listUsers()
+    
+    if (authError) {
+      console.error('Error fetching auth users:', authError)
+      // Continue without emails rather than failing completely
+    }
+    
+    // Create a map of user emails
+    const emailMap = new Map()
+    authData?.users?.forEach(user => {
+      emailMap.set(user.id, user.email)
+    })
+    
+    // Get all user IDs
+    const userIds = profiles.map(p => p.id)
+    
+    // Fetch purchases for all users
+    const { data: allPurchases } = await supabase
+      .from('user_purchases')
+      .select(`
+        *,
+        class_packages (
+          name
+        )
+      `)
+      .in('user_id', userIds)
+    
+    // Fetch bookings for all users
+    const { data: allBookings } = await supabase
+      .from('class_bookings')
+      .select(`
+        *,
+        class_schedules (
+          class_name,
+          class_date,
+          start_time
+        )
+      `)
+      .in('user_id', userIds)
+    
+    // Combine all data
+    const usersWithData = profiles.map(profile => {
+      const email = emailMap.get(profile.id)
+      const displayName = profile.display_name || email?.split('@')[0] || 'Unknown User'
+      
+      return {
+        ...profile,
+        email,
+        display_name: displayName, // Ensure display_name is never null
+        user_purchases: allPurchases?.filter(p => p.user_id === profile.id) || [],
+        class_bookings: allBookings?.filter(b => b.user_id === profile.id) || []
+      }
+    })
+    
+    return NextResponse.json({ users: usersWithData })
+  } catch (error) {
+    console.error('Users API error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

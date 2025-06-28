@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 interface UserProfile {
   id: string
   display_name: string
+  email?: string
   created_at: string
   is_admin: boolean
   user_purchases?: any[]
@@ -49,6 +50,7 @@ export default function ManageUsersPage() {
     // Filter users based on search term
     const filtered = users.filter(user => 
       user.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.id.toLowerCase().includes(searchTerm.toLowerCase())
     )
     setFilteredUsers(filtered)
@@ -56,69 +58,17 @@ export default function ManageUsersPage() {
 
   const fetchUsers = async () => {
     try {
-      // First, let's check if the current user is an admin
-      const { data: currentUserProfile } = await supabase
-        .from('user_profiles')
-        .select('is_admin')
-        .eq('id', user?.id)
-        .single()
-
-      console.log('Current user admin status:', currentUserProfile)
-      setDebugInfo(currentUserProfile)
-
-      // First, try to get just the user profiles without joins
-      const { data: profilesOnly, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      console.log('Profiles only query:', { profilesOnly, profilesError })
-
-      // Since there's no direct foreign key between user_profiles and other tables,
-      // we'll fetch the data separately and combine it
-      if (profilesOnly && profilesOnly.length > 0) {
-        // Get all user IDs
-        const userIds = profilesOnly.map(p => p.id)
-        
-        // Fetch purchases for all users
-        const { data: allPurchases } = await supabase
-          .from('user_purchases')
-          .select(`
-            *,
-            class_packages (
-              name
-            )
-          `)
-          .in('user_id', userIds)
-        
-        // Fetch bookings for all users
-        const { data: allBookings } = await supabase
-          .from('class_bookings')
-          .select(`
-            *,
-            class_schedules (
-              class_name,
-              class_date,
-              start_time
-            )
-          `)
-          .in('user_id', userIds)
-        
-        // Combine the data
-        const usersWithData = profilesOnly.map(profile => ({
-          ...profile,
-          user_purchases: allPurchases?.filter(p => p.user_id === profile.id) || [],
-          class_bookings: allBookings?.filter(b => b.user_id === profile.id) || []
-        }))
-        
-        console.log('Combined user data:', usersWithData)
-        setUsers(usersWithData)
-        setFilteredUsers(usersWithData)
-      } else {
-        console.log('No user profiles found')
-        setUsers([])
-        setFilteredUsers([])
+      const response = await fetch('/api/admin/users')
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch users')
       }
+      
+      const data = await response.json()
+      console.log('Fetched users:', data.users)
+      
+      setUsers(data.users)
+      setFilteredUsers(data.users)
     } catch (error) {
       console.error('Error fetching users:', error)
       toast.error('Failed to load users')
@@ -274,7 +224,8 @@ export default function ManageUsersPage() {
                       )}
                     </CardTitle>
                     <CardDescription>
-                      ID: {userItem.id}
+                      {userItem.email && <div>{userItem.email}</div>}
+                      <div className="text-xs">ID: {userItem.id}</div>
                     </CardDescription>
                   </div>
                   <div className="flex gap-2">
