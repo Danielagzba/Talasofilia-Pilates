@@ -45,6 +45,17 @@ export default function AdminSettingsPage() {
     const loadSettings = async () => {
       setLoading(true)
       try {
+        // First check if settings table exists
+        const checkResponse = await fetch('/api/admin/settings/check')
+        const checkData = await checkResponse.json()
+        
+        if (!checkResponse.ok || !checkData.exists) {
+          toast.error('Settings table not found. Please run the database migration.')
+          console.error('Settings table check:', checkData)
+          setLoading(false)
+          return
+        }
+        
         const response = await fetch('/api/admin/settings')
         if (response.ok) {
           const data = await response.json()
@@ -62,6 +73,7 @@ export default function AdminSettingsPage() {
         }
       } catch (error) {
         console.error('Error loading settings:', error)
+        toast.error('Failed to load settings')
       } finally {
         setLoading(false)
       }
