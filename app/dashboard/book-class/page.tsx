@@ -57,7 +57,7 @@ export default function BookClassPage() {
       .eq('user_id', user.id)
       .eq('payment_status', 'completed')
       .gte('expiry_date', new Date().toISOString())
-      .gte('classes_remaining', 0) // Changed from gt to gte to include 0
+      .gt('classes_remaining', 0) // Only fetch packages with remaining classes
       .order('expiry_date', { ascending: true })
 
     if (error) {
@@ -107,7 +107,11 @@ export default function BookClassPage() {
       .order('class_date', { ascending: true })
       .order('start_time', { ascending: true })
 
-    if (!error && data) {
+    if (error) {
+      console.error('Error fetching schedules:', error)
+    } else if (data) {
+      console.log('Fetched schedules:', data)
+      console.log('Date range:', startDate.format('YYYY-MM-DD'), 'to', endDate.format('YYYY-MM-DD'))
       setSchedules(data)
     }
   }, [supabase, currentWeek, currentMonth, currentDay, viewMode])
@@ -545,7 +549,7 @@ export default function BookClassPage() {
                   </p>
                 </div>
                 
-                {dayOfWeek !== 0 && daySchedules.length > 0 && isCurrentMonth && (
+                {daySchedules.length > 0 && isCurrentMonth && (
                   <div className="space-y-1">
                     {daySchedules.map(schedule => {
                       const isBooked = userBookings.includes(schedule.id)
