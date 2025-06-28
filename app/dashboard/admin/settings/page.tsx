@@ -86,7 +86,9 @@ export default function AdminSettingsPage() {
       if (response.ok) {
         toast.success('Settings saved successfully!')
       } else {
-        toast.error('Failed to save settings')
+        const errorData = await response.json()
+        console.error('Settings save error:', errorData)
+        toast.error(errorData.error || 'Failed to save settings')
       }
     } catch (error) {
       console.error('Error saving settings:', error)

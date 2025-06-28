@@ -37,6 +37,8 @@ export async function GET() {
       return acc
     }, {} as Record<string, any>) || {}
     
+    console.log('[Settings API] Loaded settings:', settingsObject)
+    
     return NextResponse.json(settingsObject)
   } catch (error) {
     console.error('Settings API error:', error)
@@ -66,26 +68,44 @@ export async function POST(request: NextRequest) {
     
     // Get settings from request body
     const settings = await request.json()
+    console.log('[Settings API] Received settings to save:', settings)
     
     // Update each setting
-    const updates = Object.entries(settings).map(([key, value]) => 
-      supabase
-        .from('settings')
-        .upsert({ 
-          key, 
-          value: JSON.stringify(value) 
-        }, { 
-          onConflict: 'key' 
-        })
+    const updates = await Promise.all(
+      Object.entries(settings).map(async ([key, value]) => {
+        console.log(`[Settings API] Updating ${key} to:`, value)
+        
+        const { data, error } = await supabase
+          .from('settings')
+          .upsert({ 
+            key, 
+            value: JSON.stringify(value) 
+          }, { 
+            onConflict: 'key' 
+          })
+          .select()
+        
+        if (error) {
+          console.error(`[Settings API] Error updating ${key}:`, error)
+          return { key, error }
+        }
+        
+        console.log(`[Settings API] Successfully updated ${key}`)
+        return { key, data }
+      })
     )
     
-    const results = await Promise.all(updates)
-    
     // Check for errors
-    const errors = results.filter(result => result.error)
+    const errors = updates.filter(result => 'error' in result && result.error)
     if (errors.length > 0) {
-      console.error('Settings update errors:', errors)
-      return NextResponse.json({ error: 'Failed to update some settings' }, { status: 500 })
+      console.error('[Settings API] Settings update errors:', errors)
+      return NextResponse.json({ 
+        error: 'Failed to update some settings',
+        details: errors.map(e => ({
+          key: e.key,
+          error: e.error.message
+        }))
+      }, { status: 500 })
     }
     
     return NextResponse.json({ success: true })
