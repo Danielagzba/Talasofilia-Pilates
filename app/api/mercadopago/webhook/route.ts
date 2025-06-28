@@ -8,10 +8,22 @@ export async function GET() {
   return NextResponse.json({ status: 'ok', message: 'MercadoPago webhook is ready' })
 }
 
+// Export runtime configuration
+export const runtime = 'nodejs'
+export const maxDuration = 30
+
 export async function POST(request: NextRequest) {
-  console.log('[MercadoPago Webhook] Received webhook call')
+  const startTime = Date.now()
+  console.log('[MercadoPago Webhook] Received webhook call at:', new Date().toISOString())
   
   try {
+    // Log headers for debugging
+    console.log('[MercadoPago Webhook] Headers:', {
+      'content-type': request.headers.get('content-type'),
+      'x-signature': request.headers.get('x-signature') ? 'present' : 'missing',
+      'x-request-id': request.headers.get('x-request-id')
+    })
+    
     const body = await request.json()
     console.log('[MercadoPago Webhook] Body:', JSON.stringify(body, null, 2))
     
@@ -37,9 +49,18 @@ export async function POST(request: NextRequest) {
     
     let paymentData
     try {
+      console.log('[MercadoPago Webhook] Fetching payment details for ID:', paymentId)
       paymentData = await payment.get({ id: paymentId })
+      console.log('[MercadoPago Webhook] Payment retrieved successfully')
     } catch (paymentError) {
       console.error('[MercadoPago Webhook] Failed to get payment details:', paymentError)
+      // Log more details about the error
+      if (paymentError instanceof Error) {
+        console.error('[MercadoPago Webhook] Error details:', {
+          message: paymentError.message,
+          stack: paymentError.stack
+        })
+      }
       return NextResponse.json({ error: 'Failed to retrieve payment' }, { status: 500 })
     }
     
@@ -144,9 +165,18 @@ export async function POST(request: NextRequest) {
       // Don't fail the webhook if email fails
     }
 
+    const processingTime = Date.now() - startTime
+    console.log('[MercadoPago Webhook] Successfully processed payment:', paymentId, 'in', processingTime, 'ms')
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error('MercadoPago webhook error:', error)
+    console.error('[MercadoPago Webhook] Webhook error:', error)
+    // Log more details about the error
+    if (error instanceof Error) {
+      console.error('[MercadoPago Webhook] Error details:', {
+        message: error.message,
+        stack: error.stack
+      })
+    }
     return NextResponse.json(
       { error: 'Webhook processing failed' },
       { status: 500 }
