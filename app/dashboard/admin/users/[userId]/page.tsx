@@ -54,6 +54,7 @@ export default function UserProfilePage() {
   const fetchUserProfile = async () => {
     try {
       const authHeaders = await getAuthHeaders()
+      console.log('Fetching profile for userId:', userId)
       const response = await fetch(`/api/admin/users/${userId}/profile`, {
         headers: authHeaders
       })
@@ -63,6 +64,7 @@ export default function UserProfilePage() {
       }
 
       const data = await response.json()
+      console.log('User profile data:', data)
       setUserData(data)
     } catch (error) {
       console.error('Error fetching user profile:', error)
@@ -209,6 +211,7 @@ export default function UserProfilePage() {
           </div>
         </CardHeader>
         <CardContent>
+          {console.log('Purchases:', userData?.purchases)}
           {userData?.purchases && userData.purchases.length > 0 ? (
             <div className="space-y-3">
               {userData.purchases.map((purchase: any) => {
