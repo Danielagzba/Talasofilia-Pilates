@@ -66,8 +66,8 @@ export async function GET(request: Request) {
     // Get all user IDs
     const userIds = profiles.map(p => p.id)
     
-    // Fetch purchases for all users
-    const { data: allPurchases } = await supabase
+    // Fetch purchases for all users using service role client to bypass RLS
+    const { data: allPurchases } = await serviceSupabase
       .from('user_purchases')
       .select(`
         *,
@@ -77,8 +77,8 @@ export async function GET(request: Request) {
       `)
       .in('user_id', userIds)
     
-    // Fetch bookings for all users
-    const { data: allBookings } = await supabase
+    // Fetch bookings for all users using service role client to bypass RLS
+    const { data: allBookings } = await serviceSupabase
       .from('class_bookings')
       .select(`
         *,
