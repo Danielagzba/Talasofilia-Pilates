@@ -40,9 +40,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
     }
     
-    // Convert array to object for easier access
+    // Convert array to object for easier access and parse JSON values
     const settingsObject = settings?.reduce((acc, setting) => {
-      acc[setting.key] = setting.value
+      try {
+        // Try to parse the value if it's a JSON string
+        acc[setting.key] = JSON.parse(setting.value)
+      } catch {
+        // If parsing fails, use the raw value
+        acc[setting.key] = setting.value
+      }
       return acc
     }, {} as Record<string, any>) || {}
     

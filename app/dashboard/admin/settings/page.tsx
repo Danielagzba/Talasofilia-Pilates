@@ -71,12 +71,12 @@ export default function AdminSettingsPage() {
             studio_name: data.studio_name || 'Talasofilia Pilates',
             contact_email: data.contact_email || '',
             phone_number: data.phone_number || '',
-            default_class_capacity: Number(data.default_class_capacity) || 10,
-            booking_window_hours: Number(data.booking_window_hours) || 3,
-            cancellation_window_hours: Number(data.cancellation_window_hours) || 24,
-            notification_new_booking: data.notification_new_booking === 'true',
-            notification_cancellation: data.notification_cancellation === 'true',
-            notification_low_capacity: data.notification_low_capacity === 'true'
+            default_class_capacity: typeof data.default_class_capacity === 'number' ? data.default_class_capacity : (Number(data.default_class_capacity) || 10),
+            booking_window_hours: typeof data.booking_window_hours === 'number' ? data.booking_window_hours : (Number(data.booking_window_hours) || 3),
+            cancellation_window_hours: typeof data.cancellation_window_hours === 'number' ? data.cancellation_window_hours : (Number(data.cancellation_window_hours) || 24),
+            notification_new_booking: typeof data.notification_new_booking === 'boolean' ? data.notification_new_booking : (data.notification_new_booking === 'true' || data.notification_new_booking === true),
+            notification_cancellation: typeof data.notification_cancellation === 'boolean' ? data.notification_cancellation : (data.notification_cancellation === 'true' || data.notification_cancellation === true),
+            notification_low_capacity: typeof data.notification_low_capacity === 'boolean' ? data.notification_low_capacity : (data.notification_low_capacity === 'true' || data.notification_low_capacity === true)
           })
         }
       } catch (error) {
