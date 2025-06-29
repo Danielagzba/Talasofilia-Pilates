@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '../../../../contexts/auth-context'
 import { useAdmin } from '../../../../hooks/use-admin'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card'
@@ -235,13 +236,14 @@ export default function ManageUsersPage() {
                     </CardDescription>
                   </div>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/dashboard/admin/users/${userItem.id}`)}
-                    >
-                      View Details
-                    </Button>
+                    <Link href={`/dashboard/admin/users/${userItem.id}`}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                      >
+                        View Details
+                      </Button>
+                    </Link>
                     {userItem.id !== user?.id && (
                       <Button
                         variant="outline"
