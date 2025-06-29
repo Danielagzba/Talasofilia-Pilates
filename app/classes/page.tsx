@@ -1,15 +1,15 @@
+'use client'
+
+import { useEffect } from 'react'
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
-export const metadata = {
-  title: "Classes | Talasofilia Pilates",
-  description:
-    "Explore our Pilates classes for all levels, from beginners to advanced practitioners.",
-};
-
 export default function ClassesPage() {
+  useEffect(() => {
+    document.title = 'Classes | Talasofilia Pilates'
+  }, [])
   return (
     <div className="pt-16">
       {/* Hero Section */}

@@ -1,3 +1,6 @@
+'use client'
+
+import { useEffect } from 'react'
 import Link from "next/link";
 import Image from "next/image";
 import { Check } from "lucide-react";
@@ -11,13 +14,10 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 
-export const metadata = {
-  title: "Pricing | Talasofilia Pilates",
-  description:
-    "Explore our class packages and pricing options at Talasofilia Pilates in Puerto Escondido.",
-};
-
 export default function PricingPage() {
+  useEffect(() => {
+    document.title = 'Pricing | Talasofilia Pilates'
+  }, [])
   return (
     <div className="pt-16">
       {/* Hero Section */}

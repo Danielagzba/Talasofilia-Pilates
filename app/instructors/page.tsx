@@ -1,15 +1,15 @@
+'use client'
+
+import { useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '../../components/ui/button'
 import { Instagram } from 'lucide-react'
 
-export const metadata = {
-    title: 'Instructors | Estudio Pilates',
-    description:
-        'Meet our team of certified Pilates instructors at Estudio Pilates in Mexico City.',
-}
-
 export default function InstructorsPage() {
+    useEffect(() => {
+        document.title = 'Instructors | Estudio Pilates'
+    }, [])
     return (
         <div className="pt-16">
             <section className="py-20 md:py-32">

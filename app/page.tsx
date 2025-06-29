@@ -1,9 +1,16 @@
+'use client'
+
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useEffect } from "react";
 
 export default function Home() {
+  useEffect(() => {
+    // Update page title
+    document.title = 'Talasofilia Pilates | Modern Pilates Studio in Puerto Escondido'
+  }, [])
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}

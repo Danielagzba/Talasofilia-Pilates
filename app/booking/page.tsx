@@ -1,3 +1,6 @@
+'use client'
+
+import { useEffect } from 'react'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
@@ -18,12 +21,10 @@ import {
     CardTitle,
 } from '../../components/ui/card'
 
-export const metadata = {
-    title: 'Book a Class | Estudio Pilates',
-    description: 'Book your Pilates class at our studio in Mexico City.',
-}
-
 export default function BookingPage() {
+    useEffect(() => {
+        document.title = 'Book a Class | Estudio Pilates'
+    }, [])
     return (
         <div className="pt-16">
             <section className="py-20 md:py-32">

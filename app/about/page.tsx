@@ -1,14 +1,14 @@
+'use client'
+
+import { useEffect } from 'react'
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "../../components/ui/button";
 
-export const metadata = {
-  title: "About Us | Talasofilia Pilates",
-  description:
-    "Learn about our studio's philosophy, history, and the instructor behind Talasofilia Pilates in Puerto Escondido.",
-};
-
 export default function AboutPage() {
+  useEffect(() => {
+    document.title = 'About Us | Talasofilia Pilates'
+  }, [])
   return (
     <div className="pt-16">
       {/* Hero Section */}
