@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
+import { createServiceSupabaseClient } from '@/lib/supabase-server'
 
 export async function GET(request: Request) {
   try {
@@ -26,8 +27,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
+    // Use service client for admin operations to bypass RLS
+    const serviceSupabase = createServiceSupabaseClient()
+    
     // Fetch all settings
-    const { data: settings, error } = await supabase
+    const { data: settings, error } = await serviceSupabase
       .from('settings')
       .select('key, value')
     
@@ -76,6 +80,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
+    // Use service client for admin operations to bypass RLS
+    const serviceSupabase = createServiceSupabaseClient()
+    
     // Get settings from request body
     const settings = await request.json()
     console.log('[Settings API] Received settings to save:', settings)
@@ -85,7 +92,7 @@ export async function POST(request: NextRequest) {
       Object.entries(settings).map(async ([key, value]) => {
         console.log(`[Settings API] Updating ${key} to:`, value)
         
-        const { data, error } = await supabase
+        const { data, error } = await serviceSupabase
           .from('settings')
           .upsert({ 
             key, 
