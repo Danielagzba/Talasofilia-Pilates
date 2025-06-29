@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group'
 import { X, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, addDays } from 'date-fns'
+import { getAuthHeaders } from '@/lib/auth-helpers'
 
 interface Package {
   id: string
@@ -67,10 +68,12 @@ export function AddCreditsModal({ userId, userName, onClose, onSuccess }: AddCre
     if (!selectedPackage) return
 
     try {
+      const authHeaders = await getAuthHeaders()
       const response = await fetch(`/api/admin/users/${userId}/credits`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...authHeaders
         },
         body: JSON.stringify({
           packageId: selectedPackageId

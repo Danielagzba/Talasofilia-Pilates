@@ -45,8 +45,14 @@ export default function AdminSettingsPage() {
     const loadSettings = async () => {
       setLoading(true)
       try {
+        // Get auth headers
+        const { getAuthHeaders } = await import('@/lib/auth-helpers')
+        const authHeaders = await getAuthHeaders()
+        
         // First check if settings table exists
-        const checkResponse = await fetch('/api/admin/settings/check')
+        const checkResponse = await fetch('/api/admin/settings/check', {
+          headers: authHeaders
+        })
         const checkData = await checkResponse.json()
         
         if (!checkResponse.ok || !checkData.exists) {
@@ -56,7 +62,9 @@ export default function AdminSettingsPage() {
           return
         }
         
-        const response = await fetch('/api/admin/settings')
+        const response = await fetch('/api/admin/settings', {
+          headers: authHeaders
+        })
         if (response.ok) {
           const data = await response.json()
           setSettings({
@@ -87,10 +95,15 @@ export default function AdminSettingsPage() {
   const handleSave = async () => {
     setSaving(true)
     try {
+      // Get auth headers
+      const { getAuthHeaders } = await import('@/lib/auth-helpers')
+      const authHeaders = await getAuthHeaders()
+      
       const response = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...authHeaders
         },
         body: JSON.stringify(settings),
       })

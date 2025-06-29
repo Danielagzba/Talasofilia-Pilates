@@ -58,7 +58,13 @@ export default function ManageUsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/admin/users')
+      // Get auth headers
+      const { getAuthHeaders } = await import('@/lib/auth-helpers')
+      const authHeaders = await getAuthHeaders()
+      
+      const response = await fetch('/api/admin/users', {
+        headers: authHeaders
+      })
       
       if (!response.ok) {
         throw new Error('Failed to fetch users')

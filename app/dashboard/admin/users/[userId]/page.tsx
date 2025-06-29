@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import { AddCreditsModal } from '../../../../../components/admin/add-credits-modal'
+import { getAuthHeaders } from '@/lib/auth-helpers'
 
 interface UserProfile {
   id: string
@@ -52,7 +53,10 @@ export default function UserProfilePage() {
 
   const fetchUserProfile = async () => {
     try {
-      const response = await fetch(`/api/admin/users/${userId}/profile`)
+      const authHeaders = await getAuthHeaders()
+      const response = await fetch(`/api/admin/users/${userId}/profile`, {
+        headers: authHeaders
+      })
       
       if (!response.ok) {
         throw new Error('Failed to fetch user profile')
