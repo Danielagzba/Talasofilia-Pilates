@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Label } from '../ui/label'
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group'
 import { X, Loader2 } from 'lucide-react'
-import { createClient } from '../../lib/supabase'
 import { toast } from 'sonner'
 import { format, addDays } from 'date-fns'
 
@@ -31,7 +30,6 @@ export function AddCreditsModal({ userId, userName, onClose, onSuccess }: AddCre
   const [selectedPackageId, setSelectedPackageId] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const supabase = createClient()
 
   useEffect(() => {
     fetchPackages()
@@ -39,16 +37,16 @@ export function AddCreditsModal({ userId, userName, onClose, onSuccess }: AddCre
 
   const fetchPackages = async () => {
     try {
-      const { data, error } = await supabase
-        .from('class_packages')
-        .select('*')
-        .eq('is_active', true)
-        .order('number_of_classes', { ascending: true })
+      const response = await fetch('/api/packages')
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch packages')
+      }
 
-      if (error) throw error
-      setPackages(data || [])
-      if (data && data.length > 0) {
-        setSelectedPackageId(data[0].id)
+      const data = await response.json()
+      setPackages(data.packages || [])
+      if (data.packages && data.packages.length > 0) {
+        setSelectedPackageId(data.packages[0].id)
       }
     } catch (error) {
       console.error('Error fetching packages:', error)
@@ -69,25 +67,19 @@ export function AddCreditsModal({ userId, userName, onClose, onSuccess }: AddCre
     if (!selectedPackage) return
 
     try {
-      // Create a new purchase record
-      const purchaseDate = new Date()
-      const expiryDate = addDays(purchaseDate, selectedPackage.validity_days)
-
-      const { data, error } = await supabase
-        .from('user_purchases')
-        .insert({
-          user_id: userId,
-          package_id: selectedPackageId,
-          purchase_date: purchaseDate.toISOString(),
-          expiry_date: expiryDate.toISOString(),
-          classes_remaining: selectedPackage.number_of_classes,
-          total_classes: selectedPackage.number_of_classes,
-          amount_paid: selectedPackage.price,
-          payment_method: 'cash',
-          payment_status: 'completed'
+      const response = await fetch(`/api/admin/users/${userId}/credits`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          packageId: selectedPackageId
         })
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        throw new Error('Failed to add credits')
+      }
 
       toast.success(`Successfully added ${selectedPackage.number_of_classes} credits to ${userName}`)
       onSuccess()

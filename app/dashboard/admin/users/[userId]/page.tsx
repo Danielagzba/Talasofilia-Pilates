@@ -6,8 +6,7 @@ import { useAuth } from '../../../../../contexts/auth-context'
 import { useAdmin } from '../../../../../hooks/use-admin'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card'
 import { Button } from '../../../../../components/ui/button'
-import { createClient } from '../../../../../lib/supabase'
-import { Loader2, ArrowLeft, User, Calendar, CreditCard, Plus } from 'lucide-react'
+import { Loader2, ArrowLeft, User, Calendar, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import Link from 'next/link'
@@ -20,8 +19,12 @@ interface UserProfile {
   avatar_url: string
   created_at: string
   updated_at: string
-  classHistory?: any[]
-  purchases?: any[]
+}
+
+interface UserData {
+  profile: UserProfile
+  classHistory: any[]
+  purchases: any[]
 }
 
 export default function UserProfilePage() {
@@ -31,10 +34,9 @@ export default function UserProfilePage() {
   const params = useParams()
   const userId = params.userId as string
   
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAddCreditsModal, setShowAddCreditsModal] = useState(false)
-  const supabase = createClient()
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
@@ -50,54 +52,14 @@ export default function UserProfilePage() {
 
   const fetchUserProfile = async () => {
     try {
-      // Fetch user profile
-      const { data: profile, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
+      const response = await fetch(`/api/admin/users/${userId}/profile`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch user profile')
+      }
 
-      if (profileError) throw profileError
-
-      // Fetch user's class history
-      const { data: classHistory, error: historyError } = await supabase
-        .from('class_bookings')
-        .select(`
-          *,
-          class_schedules (
-            class_name,
-            instructor_name,
-            class_date,
-            start_time,
-            end_time
-          )
-        `)
-        .eq('user_id', userId)
-        .order('booked_at', { ascending: false })
-
-      if (historyError) throw historyError
-
-      // Fetch user's purchases
-      const { data: purchases, error: purchasesError } = await supabase
-        .from('user_purchases')
-        .select(`
-          *,
-          class_packages (
-            name,
-            number_of_classes,
-            validity_days
-          )
-        `)
-        .eq('user_id', userId)
-        .order('purchase_date', { ascending: false })
-
-      if (purchasesError) throw purchasesError
-
-      setUserProfile({
-        ...profile,
-        classHistory,
-        purchases
-      })
+      const data = await response.json()
+      setUserData(data)
     } catch (error) {
       console.error('Error fetching user profile:', error)
       toast.error('Failed to load user profile')
@@ -107,13 +69,13 @@ export default function UserProfilePage() {
   }
 
   const getClassStats = () => {
-    if (!userProfile?.classHistory) return { total: 0, attended: 0, cancelled: 0, upcoming: 0 }
+    if (!userData?.classHistory) return { total: 0, attended: 0, cancelled: 0, upcoming: 0 }
     
     const stats = {
-      total: userProfile.classHistory.length,
-      attended: userProfile.classHistory.filter(b => b.booking_status === 'attended').length,
-      cancelled: userProfile.classHistory.filter(b => b.booking_status === 'cancelled').length,
-      upcoming: userProfile.classHistory.filter(b => {
+      total: userData.classHistory.length,
+      attended: userData.classHistory.filter(b => b.booking_status === 'attended').length,
+      cancelled: userData.classHistory.filter(b => b.booking_status === 'cancelled').length,
+      upcoming: userData.classHistory.filter(b => {
         const classDate = new Date(`${b.class_schedules.class_date} ${b.class_schedules.start_time}`)
         return b.booking_status === 'confirmed' && classDate > new Date()
       }).length
@@ -151,10 +113,10 @@ export default function UserProfilePage() {
       {/* User Header */}
       <div className="flex items-center gap-4">
         <div className="h-16 w-16 rounded-full bg-stone-200 flex items-center justify-center">
-          {userProfile?.avatar_url ? (
+          {userData?.profile.avatar_url ? (
             <img 
-              src={userProfile.avatar_url} 
-              alt={userProfile.display_name} 
+              src={userData.profile.avatar_url} 
+              alt={userData.profile.display_name} 
               className="h-full w-full rounded-full object-cover"
             />
           ) : (
@@ -163,10 +125,10 @@ export default function UserProfilePage() {
         </div>
         <div>
           <h1 className="font-serif text-3xl font-light">
-            {userProfile?.display_name || 'User Profile'}
+            {userData?.profile.display_name || 'User Profile'}
           </h1>
           <p className="text-muted-foreground">
-            Member since {userProfile && format(new Date(userProfile.created_at), 'MMMM d, yyyy')}
+            Member since {userData && format(new Date(userData.profile.created_at), 'MMMM d, yyyy')}
           </p>
         </div>
       </div>
@@ -208,15 +170,15 @@ export default function UserProfilePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Display Name</p>
-              <p className="font-medium">{userProfile?.display_name || 'Not set'}</p>
+              <p className="font-medium">{userData?.profile.display_name || 'Not set'}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Phone</p>
-              <p className="font-medium">{userProfile?.phone || 'Not set'}</p>
+              <p className="font-medium">{userData?.profile.phone || 'Not set'}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">User ID</p>
-              <p className="font-medium text-xs">{userProfile?.id}</p>
+              <p className="font-medium text-xs">{userData?.profile.id}</p>
             </div>
           </div>
         </CardContent>
@@ -243,9 +205,9 @@ export default function UserProfilePage() {
           </div>
         </CardHeader>
         <CardContent>
-          {userProfile?.purchases && userProfile.purchases.length > 0 ? (
+          {userData?.purchases && userData.purchases.length > 0 ? (
             <div className="space-y-3">
-              {userProfile.purchases.map((purchase: any) => {
+              {userData.purchases.map((purchase: any) => {
                 const isActive = new Date(purchase.expiry_date) > new Date() && purchase.classes_remaining > 0
                 const isExpired = new Date(purchase.expiry_date) <= new Date()
                 
@@ -307,9 +269,9 @@ export default function UserProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {userProfile?.classHistory && userProfile.classHistory.length > 0 ? (
+          {userData?.classHistory && userData.classHistory.length > 0 ? (
             <div className="space-y-2">
-              {userProfile.classHistory.map((booking: any) => {
+              {userData.classHistory.map((booking: any) => {
                 const classDate = new Date(`${booking.class_schedules.class_date} ${booking.class_schedules.start_time}`)
                 const isPast = classDate < new Date()
                 
@@ -358,10 +320,10 @@ export default function UserProfilePage() {
       </Card>
 
       {/* Add Credits Modal */}
-      {showAddCreditsModal && userProfile && (
+      {showAddCreditsModal && userData && (
         <AddCreditsModal
           userId={userId}
-          userName={userProfile.display_name}
+          userName={userData.profile.display_name}
           onClose={() => setShowAddCreditsModal(false)}
           onSuccess={() => {
             setShowAddCreditsModal(false)
