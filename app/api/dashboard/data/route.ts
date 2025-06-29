@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase'
 
-export async function GET() {
+export async function GET(request: Request) {
   console.log('[Dashboard API] Getting dashboard data...')
   
   try {
-    const supabase = await createClient()
+    // Get the authorization header
+    const authHeader = request.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '')
     
-    // Get the current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const supabase = createClient()
+    
+    // Get the current user using the token
+    const { data: { user }, error: userError } = token 
+      ? await supabase.auth.getUser(token)
+      : await supabase.auth.getUser()
     
     if (userError || !user) {
       console.error('[Dashboard API] User error:', userError)

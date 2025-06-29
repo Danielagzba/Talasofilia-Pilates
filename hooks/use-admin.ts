@@ -29,7 +29,17 @@ export function useAdmin() {
       setError(null);
 
       try {
-        const response = await fetch('/api/auth/check-admin');
+        // Get auth headers
+        const { createClient } = await import('@/lib/supabase');
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        const authHeaders = session?.access_token 
+          ? { 'Authorization': `Bearer ${session.access_token}` } 
+          : {};
+        
+        const response = await fetch('/api/auth/check-admin', {
+          headers: authHeaders
+        });
         
         if (!response.ok && response.status !== 200) {
           throw new Error(`HTTP error! status: ${response.status}`);

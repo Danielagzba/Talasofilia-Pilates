@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPreference } from '@/lib/mercadopago'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase'
 import { headers } from 'next/headers'
 
 export async function POST(request: NextRequest) {
@@ -38,10 +38,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the supabase client
-    const supabase = await createClient()
+    const authHeader = request.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '')
+    
+    const supabase = createClient()
 
     // Get the authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { data: { user }, error: authError } = token 
+      ? await supabase.auth.getUser(token)
+      : await supabase.auth.getUser()
     
     if (authError || !user) {
       return NextResponse.json(

@@ -1,74 +1,16 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-        },
-      },
-    }
-  )
-
-  // Refresh session if expired - required for Server Components
-  const { data: { user } } = await supabase.auth.getUser()
-
+  // Only handle special cases that need server-side redirects
+  // Let the client-side handle most auth logic
+  
   // Special handling for checkout success/pending pages
   const isCheckoutReturn = request.nextUrl.pathname.startsWith('/dashboard/checkout/')
   
-  // If user is not authenticated and trying to access checkout return pages,
-  // redirect to login with a return URL
-  if (!user && isCheckoutReturn) {
-    const redirectUrl = new URL('/login', request.url)
-    redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname + request.nextUrl.search)
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  return response
+  // For checkout return pages, we'll let the client-side handle auth
+  // The page itself will check for auth and redirect if needed
+  
+  return NextResponse.next()
 }
 
 export const config = {

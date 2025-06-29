@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '../../../../../../lib/supabase/server'
-import { createServiceSupabaseClient } from '../../../../../../lib/supabase-server'
+import { createClient } from '@/lib/supabase'
+import { createServiceSupabaseClient } from '@/lib/supabase-server'
 import { addDays } from 'date-fns'
 
 export async function POST(
@@ -9,10 +9,15 @@ export async function POST(
 ) {
   try {
     // First check authentication with regular client
-    const authSupabase = await createClient()
+    const authHeader = request.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '')
+    
+    const authSupabase = createClient()
     
     // Check if user is authenticated
-    const { data: { user }, error: authError } = await authSupabase.auth.getUser()
+    const { data: { user }, error: authError } = token 
+      ? await authSupabase.auth.getUser(token)
+      : await authSupabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useAuth } from '../../contexts/auth-context'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -162,7 +162,7 @@ export default function DashboardPage() {
     }
   }, [user?.id])
 
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     const startTime = Date.now()
     console.log(`[Dashboard ${startTime}] fetchUserData called, user:`, user?.id)
     if (!user) {
@@ -180,10 +180,18 @@ export default function DashboardPage() {
     try {
       console.log(`[Dashboard ${startTime}] Fetching from API route... (${Date.now() - startTime}ms)`)
       
+      // Get auth headers
+      const authHeaders = await (async () => {
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        return session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}
+      })()
+      
       const response = await fetch('/api/dashboard/data', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          ...authHeaders
         },
       })
       
@@ -211,7 +219,7 @@ export default function DashboardPage() {
       console.log(`[Dashboard ${startTime}] Setting dataLoading to false (${Date.now() - startTime}ms)`)
       setDataLoading(false)
     }
-  }
+  }, [user])
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

@@ -1,11 +1,17 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase'
 import { NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = await createClient()
+    // Get the authorization header
+    const authHeader = request.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '')
     
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const supabase = createClient()
+    
+    const { data: { user }, error: authError } = token
+      ? await supabase.auth.getUser(token)
+      : await supabase.auth.getUser()
     
     if (authError || !user) {
       console.log('[check-admin] No authenticated user:', authError?.message)

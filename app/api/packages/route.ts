@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase'
 
 export async function GET() {
   console.log('[Packages API] Fetching class packages...')
   
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
     
     const { data, error } = await supabase
       .from('class_packages')

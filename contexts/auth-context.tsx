@@ -87,30 +87,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('Token refreshed successfully')
       }
       
-      // Send welcome email when user confirms their email
-      if (event === 'SIGNED_IN' && session?.user) {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('welcomed')
-          .eq('id', session.user.id)
-          .single()
-        
-        // If user hasn't been welcomed yet, send welcome email
-        if (profile && !profile.welcomed) {
-          try {
-            await fetch('/api/auth/welcome', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: session.user.id })
-            })
-            
-            // Mark user as welcomed
-            await supabase
-              .from('user_profiles')
-              .update({ welcomed: true })
-              .eq('id', session.user.id)
-          } catch (error) {
-            console.error('Failed to send welcome email:', error)
+      // Send welcome email only on initial sign in, not on token refresh or other events
+      if (event === 'SIGNED_IN' && session?.user && !loadingRef.current) {
+        // Use a flag to prevent multiple welcome checks
+        const welcomeCheckKey = `welcome_check_${session.user.id}`
+        if (typeof window !== 'undefined' && !sessionStorage.getItem(welcomeCheckKey)) {
+          sessionStorage.setItem(welcomeCheckKey, 'true')
+          
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('welcomed')
+            .eq('id', session.user.id)
+            .single()
+          
+          // If user hasn't been welcomed yet, send welcome email
+          if (profile && !profile.welcomed) {
+            try {
+              await fetch('/api/auth/welcome', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: session.user.id })
+              })
+              
+              // Mark user as welcomed
+              await supabase
+                .from('user_profiles')
+                .update({ welcomed: true })
+                .eq('id', session.user.id)
+            } catch (error) {
+              console.error('Failed to send welcome email:', error)
+            }
           }
         }
       }
