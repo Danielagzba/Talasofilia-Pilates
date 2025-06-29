@@ -4,7 +4,7 @@ import { createServiceSupabaseClient } from '@/lib/supabase-server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { userId: string } }
 ) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -31,65 +31,40 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Use service client for admin operations to bypass RLS
+    // Use service client to bypass RLS
     const supabase = createServiceSupabaseClient()
 
-    // Fetch user profile
-    const { data: userProfile, error: userProfileError } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', params.id)
-      .single()
-
-    if (userProfileError) {
-      return NextResponse.json({ error: userProfileError.message }, { status: 404 })
-    }
-
-    // Fetch user's class history
-    const { data: classHistory, error: historyError } = await supabase
-      .from('class_bookings')
-      .select(`
-        *,
-        class_schedules (
-          class_name,
-          instructor_name,
-          class_date,
-          start_time,
-          end_time
-        )
-      `)
-      .eq('user_id', params.id)
-      .order('booked_at', { ascending: false })
-
-    if (historyError) {
-      console.error('Error fetching class history:', historyError)
-    }
-
-    // Fetch user's purchases
+    // Get all purchases for the user
     const { data: purchases, error: purchasesError } = await supabase
       .from('user_purchases')
-      .select(`
-        *,
-        class_packages (
-          name,
-          number_of_classes,
-          validity_days
-        )
-      `)
-      .eq('user_id', params.id)
+      .select('*')
+      .eq('user_id', params.userId)
       .order('purchase_date', { ascending: false })
 
     if (purchasesError) {
-      console.error('Error fetching purchases:', purchasesError)
+      return NextResponse.json({ 
+        error: 'Failed to fetch purchases', 
+        details: purchasesError 
+      }, { status: 500 })
     }
 
+    // Also check with regular client to see RLS behavior
+    const { data: rlsPurchases, error: rlsError } = await authSupabase
+      .from('user_purchases')
+      .select('*')
+      .eq('user_id', params.userId)
+      .order('purchase_date', { ascending: false })
+
     return NextResponse.json({
-      profile: userProfile,
-      classHistory: classHistory || [],
-      purchases: purchases || []
+      serviceClientPurchases: purchases || [],
+      regularClientPurchases: rlsPurchases || [],
+      rlsError: rlsError?.message || null,
+      totalServiceClient: purchases?.length || 0,
+      totalRegularClient: rlsPurchases?.length || 0,
+      message: 'Debug information for purchases'
     })
   } catch (error) {
-    console.error('Error fetching user profile:', error)
+    console.error('Error in debug endpoint:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
