@@ -14,11 +14,13 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
   const { signIn, signUp, user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
   const redirectTo = searchParams.get('redirectTo') || '/dashboard'
+  const isConfirmed = searchParams.get('confirmed') === 'true'
 
   // Redirect to dashboard or redirectTo URL if already logged in
   useEffect(() => {
@@ -26,6 +28,16 @@ export default function LoginPage() {
       router.push(redirectTo)
     }
   }, [user, authLoading, router, redirectTo])
+  
+  // Show success message if email was just confirmed
+  useEffect(() => {
+    if (isConfirmed) {
+      toast.success('Email confirmed! You can now sign in.')
+      // Remove the confirmed parameter from URL
+      const newUrl = window.location.pathname
+      window.history.replaceState({}, '', newUrl)
+    }
+  }, [isConfirmed])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,7 +56,7 @@ export default function LoginPage() {
           // Keep loading state true to show "Please wait..." until redirect
         }
       } else {
-        const { error } = await signUp(email, password)
+        const { error } = await signUp(email, password, displayName)
         if (error) {
           toast.error(error.message)
         } else {
@@ -101,6 +113,21 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="displayName">Display Name</Label>
+                <Input
+                  id="displayName"
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Enter your name"
+                  required
+                  disabled={loading}
+                />
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -145,7 +172,10 @@ export default function LoginPage() {
           <div className="mt-6 text-center">
             <button
               type="button"
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => {
+                setIsLogin(!isLogin)
+                setDisplayName('') // Clear display name when switching
+              }}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               {isLogin ? (
