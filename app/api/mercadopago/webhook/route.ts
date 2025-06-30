@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayment } from '@/lib/mercadopago'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { sendPurchaseConfirmation } from '@/lib/email-service'
 
 // Add GET method for health check
 export async function GET() {
@@ -148,22 +147,8 @@ export async function POST(request: NextRequest) {
       .eq('id', userId)
       .single()
 
-    // Send confirmation email
-    try {
-      await sendPurchaseConfirmation({
-        to: paymentData.payer.email,
-        userName: userProfile?.display_name || paymentData.payer.email.split('@')[0],
-        packageName: packageName,
-        numberOfClasses: numberOfClasses,
-        validityDays: validityDays,
-        amount: paymentData.transaction_amount,
-        purchaseDate: purchaseDate.toLocaleDateString(),
-        expiryDate: expiryDate.toLocaleDateString()
-      })
-    } catch (emailError) {
-      console.error('Failed to send confirmation email:', emailError)
-      // Don't fail the webhook if email fails
-    }
+    // TODO: Send confirmation email when email service is configured
+    console.log('[MercadoPago Webhook] Email sending skipped - service not configured')
 
     const processingTime = Date.now() - startTime
     console.log('[MercadoPago Webhook] Successfully processed payment:', paymentId, 'in', processingTime, 'ms')
