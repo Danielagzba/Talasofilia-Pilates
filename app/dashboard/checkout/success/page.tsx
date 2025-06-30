@@ -7,6 +7,7 @@ import { Button } from '../../../../components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../../../components/ui/card'
 import { CheckCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '../../../../contexts/auth-context'
+import { getAuthHeaders } from '@/lib/auth-helpers'
 
 export default function CheckoutSuccessPage() {
   const [loading, setLoading] = useState(true)
@@ -35,11 +36,15 @@ export default function CheckoutSuccessPage() {
       const waitTime = retryCount === 0 ? 2000 : 3000
       await new Promise(resolve => setTimeout(resolve, waitTime))
 
+      // Get auth headers
+      const authHeaders = await getAuthHeaders()
+      
       // Fetch purchase data from API route
       const response = await fetch('/api/checkout/verify-purchase', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          ...authHeaders
         },
       })
       
