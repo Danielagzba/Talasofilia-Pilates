@@ -39,6 +39,13 @@ export async function POST(request: NextRequest) {
 
     // Get the payment details from MercadoPago
     const paymentId = body.data.id
+    
+    // Handle test webhook from MercadoPago dashboard
+    if (paymentId === '123456' || body.live_mode === false) {
+      console.log('[MercadoPago Webhook] Test webhook received, responding with success')
+      return NextResponse.json({ received: true, test: true })
+    }
+    
     const payment = getPayment()
     
     if (!payment) {
