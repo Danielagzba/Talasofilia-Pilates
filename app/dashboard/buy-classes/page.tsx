@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/button'
 import { Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
+import { getAuthHeaders } from '@/lib/auth-helpers'
 
 interface ClassPackage {
   id: string
@@ -59,10 +60,14 @@ export default function BuyClassesPage() {
     try {
       console.log('[BuyClasses] Starting checkout for package:', packageId)
       
+      // Get auth headers
+      const authHeaders = await getAuthHeaders()
+      
       const response = await fetch('/api/mercadopago/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...authHeaders
         },
         body: JSON.stringify({ packageId }),
         credentials: 'include' // Include cookies for authentication
