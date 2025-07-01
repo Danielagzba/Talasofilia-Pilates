@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -9,15 +9,16 @@ import { useEffect } from "react";
 export default function Home() {
   useEffect(() => {
     // Update page title
-    document.title = 'Talasofilia Pilates | Modern Pilates Studio in Puerto Escondido'
-  }, [])
+    document.title =
+      "Talasofilia Pilates | Modern Pilates Studio in Puerto Escondido";
+  }, []);
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <Image
-            src="de118328-d654-4d78-f3aa-fe0d33b21200"
+            src="3c8deaf0-ea90-4753-00c9-a84f2a18a600"
             alt="Talasofilia studio"
             fill
             sizes="100vw"

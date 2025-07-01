@@ -32,7 +32,7 @@ const nextConfig = {
         // Disable static imports optimization (since we use Cloudflare)
         disableStaticImages: true,
         // Domains allowed for external images
-        domains: ['imagedelivery.net'],
+        domains: ['imagedelivery.net', 'i.imgur.com'],
     },
     experimental: {
         webpackBuildWorker: true,

@@ -30,15 +30,30 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('x-signature')
     const requestId = request.headers.get('x-request-id')
     
+    // Log event details for debugging
+    console.log('[MercadoPago Webhook] Event type received:', body.type)
+    console.log('[MercadoPago Webhook] Event action received:', body.action)
+    
     // MercadoPago sends different types of notifications
-    // We're interested in payment notifications
-    if (body.type !== 'payment' || !body.data?.id) {
-      console.log('[MercadoPago Webhook] Not a payment notification, ignoring')
+    // Handle both payment notifications and merchant_order notifications
+    let paymentId = null
+    
+    if (body.type === 'payment' && body.data?.id) {
+      // Direct payment notification
+      paymentId = body.data.id
+    } else if (body.topic === 'merchant_order' && body.resource) {
+      // Merchant order notification - we need to fetch the order to get payment ID
+      console.log('[MercadoPago Webhook] Merchant order notification received, resource:', body.resource)
+      // For now, we'll skip merchant order notifications
+      // In a full implementation, you would fetch the merchant order and extract payment IDs
+      console.log('[MercadoPago Webhook] Skipping merchant order notification')
+      return NextResponse.json({ received: true })
+    } else {
+      console.log('[MercadoPago Webhook] No payment ID found, ignoring. Type:', body.type, 'Action:', body.action)
       return NextResponse.json({ received: true })
     }
 
-    // Get the payment details from MercadoPago
-    const paymentId = body.data.id
+    // paymentId is already extracted above
     
     // Handle test webhook from MercadoPago dashboard
     if (paymentId === '123456' || body.live_mode === false) {
