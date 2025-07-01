@@ -48,17 +48,26 @@ export async function POST(request: NextRequest) {
       // In a full implementation, you would fetch the merchant order and extract payment IDs
       console.log('[MercadoPago Webhook] Skipping merchant order notification')
       return NextResponse.json({ received: true })
+    } else if (body.data?.id) {
+      // Accept any event that has payment data
+      paymentId = body.data.id
+      if (body.type !== 'payment') {
+        console.log('[MercadoPago Webhook] Processing non-payment type event with payment data')
+      }
     } else {
       console.log('[MercadoPago Webhook] No payment ID found, ignoring. Type:', body.type, 'Action:', body.action)
       return NextResponse.json({ received: true })
     }
-
-    // paymentId is already extracted above
     
-    // Handle test webhook from MercadoPago dashboard
-    if (paymentId === '123456' || body.live_mode === false) {
-      console.log('[MercadoPago Webhook] Test webhook received, responding with success')
+    // Handle MercadoPago dashboard test webhook (with dummy payment ID)
+    if (paymentId === '123456') {
+      console.log('[MercadoPago Webhook] MercadoPago dashboard test webhook received, responding with success')
       return NextResponse.json({ received: true, test: true })
+    }
+    
+    // Log test mode status but continue processing
+    if (body.live_mode === false) {
+      console.log('[MercadoPago Webhook] Processing test mode payment:', paymentId)
     }
     
     const payment = getPayment()
