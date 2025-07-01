@@ -17,7 +17,14 @@ export async function GET(request: Request) {
     
     if (userError || !user) {
       console.error('[Verify Purchase API] User error:', userError)
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { 
+        status: 401,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
+      })
     }
     
     console.log('[Verify Purchase API] Fetching purchase for user:', user.id)
@@ -39,13 +46,25 @@ export async function GET(request: Request) {
     
     if (error) {
       console.error('[Verify Purchase API] Purchase query error:', error)
-      return NextResponse.json({ purchase: null })
+      return NextResponse.json({ purchase: null }, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
+      })
     }
     
     // Check if we got any results
     if (!data || data.length === 0) {
       console.log('[Verify Purchase API] No purchase found yet for user:', user.id)
-      return NextResponse.json({ purchase: null })
+      return NextResponse.json({ purchase: null }, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
+      })
     }
     
     // Return the first purchase
@@ -53,9 +72,33 @@ export async function GET(request: Request) {
     
     console.log('[Verify Purchase API] Purchase found:', purchase.id)
     
-    return NextResponse.json({ purchase })
+    return NextResponse.json({ purchase }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      }
+    })
   } catch (error) {
     console.error('[Verify Purchase API] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { 
+      status: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      }
+    })
   }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    }
+  })
 }

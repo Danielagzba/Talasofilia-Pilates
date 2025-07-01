@@ -14,10 +14,6 @@ export async function GET(request: Request) {
       .from('user_purchases')
       .select(`
         *,
-        user_profiles (
-          display_name,
-          email
-        ),
         class_packages (
           name
         )
@@ -42,7 +38,7 @@ export async function GET(request: Request) {
       total_recent_purchases: recentPurchases?.length || 0,
       recent_purchases: recentPurchases?.map(p => ({
         id: p.id,
-        user: p.user_profiles?.email || 'Unknown',
+        user_id: p.user_id,
         package: p.class_packages?.name || 'Unknown',
         provider: p.payment_provider,
         status: p.payment_status,
