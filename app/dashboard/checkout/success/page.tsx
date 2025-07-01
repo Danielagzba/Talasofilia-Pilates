@@ -28,12 +28,12 @@ export default function CheckoutSuccessPage() {
     }
   }, [user, sessionId, paymentId, status])
 
-  const checkPurchase = async () => {
+  const checkPurchase = async (currentRetryCount = retryCount) => {
     try {
-      console.log('[CheckoutSuccess] Starting purchase check, attempt:', retryCount + 1)
+      console.log('[CheckoutSuccess] Starting purchase check, attempt:', currentRetryCount + 1)
       
       // Wait a moment for webhook to process (longer on retries)
-      const waitTime = retryCount === 0 ? 2000 : 3000
+      const waitTime = currentRetryCount === 0 ? 2000 : 3000
       await new Promise(resolve => setTimeout(resolve, waitTime))
 
       // Get auth headers
@@ -56,11 +56,12 @@ export default function CheckoutSuccessPage() {
         if (data.purchase) {
           setPurchase(data.purchase)
           setLoading(false)
-        } else if (retryCount < 3) {
+        } else if (currentRetryCount < 3) {
           // No purchase found yet, retry up to 3 times
           console.log('[CheckoutSuccess] No purchase found, retrying...')
-          setRetryCount(prev => prev + 1)
-          setTimeout(() => checkPurchase(), 2000)
+          const newRetryCount = currentRetryCount + 1
+          setRetryCount(newRetryCount)
+          setTimeout(() => checkPurchase(newRetryCount), 2000)
         } else {
           // Max retries reached
           console.error('[CheckoutSuccess] Purchase not found after retries')
