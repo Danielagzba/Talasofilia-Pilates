@@ -32,9 +32,18 @@ export async function POST(request: NextRequest) {
     
     // MercadoPago sends different types of notifications
     // We're interested in payment notifications
-    if (body.type !== 'payment' || !body.data?.id) {
-      console.log('[MercadoPago Webhook] Not a payment notification, ignoring')
+    console.log('[MercadoPago Webhook] Event type received:', body.type)
+    console.log('[MercadoPago Webhook] Event action received:', body.action)
+    
+    // Accept any event that has payment data
+    if (!body.data?.id) {
+      console.log('[MercadoPago Webhook] No payment ID found, ignoring. Type:', body.type, 'Action:', body.action)
       return NextResponse.json({ received: true })
+    }
+    
+    // For non-payment types, still log but process if it has payment data
+    if (body.type !== 'payment') {
+      console.log('[MercadoPago Webhook] Processing non-payment type event with payment data')
     }
 
     // Get the payment details from MercadoPago
@@ -132,7 +141,7 @@ export async function POST(request: NextRequest) {
         payment_status: 'completed',
         payment_provider: 'mercado_pago',
         mercado_pago_payment_id: paymentId,
-        mercado_pago_preference_id: paymentData.preference_id,
+        mercado_pago_preference_id: null,
         mercado_pago_status: paymentData.status,
         mercado_pago_status_detail: paymentData.status_detail
       })
