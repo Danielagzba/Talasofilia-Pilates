@@ -130,23 +130,6 @@ export async function POST(request: NextRequest) {
         integration_type: 'checkout_pro',
         platform: 'nextjs',
         site: 'talasofilia_pilates'
-      },
-      additional_info: {
-        items: [
-          {
-            id: packageData.id,
-            title: packageData.name,
-            description: `Pilates class package - ${packageData.number_of_classes} classes`,
-            category_id: 'services',
-            quantity: 1,
-            unit_price: Number(packageData.price)
-          }
-        ],
-        payer: {
-          first_name: userProfile?.display_name?.split(' ')[0] || '',
-          last_name: userProfile?.display_name?.split(' ').slice(1).join(' ') || '',
-          registration_date: user.created_at
-        }
       }
     }
 
@@ -154,14 +137,11 @@ export async function POST(request: NextRequest) {
     const finalDeviceId = deviceId || deviceIdFromHeader
     if (finalDeviceId) {
       console.log('Adding device fingerprint to preference:', finalDeviceId)
-      preferenceData.tracks = [
-        {
-          type: 'facebook_ad',
-          values: {
-            'fb_device_id': finalDeviceId
-          }
-        }
-      ]
+      // Add device_id to metadata instead of tracks
+      preferenceData.metadata = {
+        ...preferenceData.metadata,
+        device_id: finalDeviceId
+      }
     }
 
     console.log('Creating MercadoPago preference with data:', JSON.stringify(preferenceData, null, 2))
