@@ -9,6 +9,7 @@ import { SiteFooter } from '../components/site-footer'
 import { AuthProvider } from '../contexts/auth-context'
 import { Toaster } from 'sonner'
 import { useEffect } from 'react'
+import { MercadoPagoDevice } from '../components/mercadopago-device'
 
 const inter = Inter({
     subsets: ['latin'],
@@ -57,6 +58,7 @@ export default function RootLayout({
                             <SiteFooter />
                         </div>
                         <Toaster position="top-center" />
+                        <MercadoPagoDevice />
                     </AuthProvider>
                 </ThemeProvider>
             </body>

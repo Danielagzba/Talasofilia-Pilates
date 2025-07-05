@@ -21,12 +21,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { packageId } = await request.json()
+    const { packageId, deviceId } = await request.json()
     console.log('Package ID:', packageId)
+    console.log('Device ID:', deviceId || 'Not provided')
 
-    // Get authorization header
+    // Get headers
     const headersList = await headers()
     const authorization = headersList.get('authorization')
+    const deviceIdFromHeader = headersList.get('x-device-session-id')
     
     // Get the actual origin from the request
     let origin = headersList.get('origin') || request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL
@@ -69,7 +71,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create MercadoPago preference
+    // Get user profile for additional information
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('display_name, phone_number')
+      .eq('id', user.id)
+      .single()
+
+    // Create MercadoPago preference with enhanced buyer information
     const preferenceData = {
       items: [
         {
@@ -78,11 +87,16 @@ export async function POST(request: NextRequest) {
           description: packageData.description || `${packageData.number_of_classes} Pilates classes - Valid for ${packageData.validity_days} days`,
           quantity: 1,
           unit_price: Number(packageData.price),
-          currency_id: 'MXN'
+          currency_id: 'MXN',
+          category_id: 'services'
         }
       ],
       payer: {
-        email: user.email
+        email: user.email,
+        name: userProfile?.display_name || undefined,
+        phone: userProfile?.phone_number ? {
+          number: userProfile.phone_number
+        } : undefined,
       },
       back_urls: {
         success: `${origin}/dashboard/checkout/success`,
@@ -111,7 +125,43 @@ export async function POST(request: NextRequest) {
         default_installments: 1
       },
       binary_mode: true, // Instant approval or rejection
-      marketplace: 'NONE'
+      marketplace: 'NONE',
+      metadata: {
+        integration_type: 'checkout_pro',
+        platform: 'nextjs',
+        site: 'talasofilia_pilates'
+      },
+      additional_info: {
+        items: [
+          {
+            id: packageData.id,
+            title: packageData.name,
+            description: `Pilates class package - ${packageData.number_of_classes} classes`,
+            category_id: 'services',
+            quantity: 1,
+            unit_price: Number(packageData.price)
+          }
+        ],
+        payer: {
+          first_name: userProfile?.display_name?.split(' ')[0] || '',
+          last_name: userProfile?.display_name?.split(' ').slice(1).join(' ') || '',
+          registration_date: user.created_at
+        }
+      }
+    }
+
+    // Add device session ID if provided (prefer from body, fallback to header)
+    const finalDeviceId = deviceId || deviceIdFromHeader
+    if (finalDeviceId) {
+      console.log('Adding device fingerprint to preference:', finalDeviceId)
+      preferenceData.tracks = [
+        {
+          type: 'facebook_ad',
+          values: {
+            'fb_device_id': finalDeviceId
+          }
+        }
+      ]
     }
 
     console.log('Creating MercadoPago preference with data:', JSON.stringify(preferenceData, null, 2))

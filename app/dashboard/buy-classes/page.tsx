@@ -18,6 +18,12 @@ interface ClassPackage {
   is_active: boolean
 }
 
+declare global {
+  interface Window {
+    MP_DEVICE_SESSION_ID?: string
+  }
+}
+
 export default function BuyClassesPage() {
   const [packages, setPackages] = useState<ClassPackage[]>([])
   const [loading, setLoading] = useState(true)
@@ -63,13 +69,22 @@ export default function BuyClassesPage() {
       // Get auth headers
       const authHeaders = await getAuthHeaders()
       
+      // Get MercadoPago Device ID
+      const deviceId = window.MP_DEVICE_SESSION_ID
+      if (deviceId) {
+        console.log('[BuyClasses] MercadoPago Device ID found:', deviceId)
+      } else {
+        console.log('[BuyClasses] Warning: MercadoPago Device ID not found')
+      }
+      
       const response = await fetch('/api/mercadopago/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders
+          ...authHeaders,
+          ...(deviceId ? { 'X-Device-Session-Id': deviceId } : {})
         },
-        body: JSON.stringify({ packageId }),
+        body: JSON.stringify({ packageId, deviceId }),
         credentials: 'include' // Include cookies for authentication
       })
 
