@@ -104,23 +104,38 @@ export default function BuyClassesPage() {
       }
 
       const { initPoint, sandboxInitPoint } = await response.json()
+      
+      console.log('MercadoPago URLs returned:', {
+        initPoint: initPoint ? 'Present' : 'Missing',
+        sandboxInitPoint: sandboxInitPoint ? 'Present' : 'Missing'
+      })
 
       // Redirect to MercadoPago Checkout
-      // In production, always use initPoint even if sandboxInitPoint exists
-      // This prevents accidentally using test mode in production
-      const isProduction = process.env.NODE_ENV === 'production'
-      const checkoutUrl = isProduction ? initPoint : (sandboxInitPoint || initPoint)
+      // Determine which URL to use based on what MercadoPago returns
+      let checkoutUrl = initPoint
+      let isTestMode = false
       
-      // Show a warning if test credentials are being used in production
-      if (isProduction && sandboxInitPoint) {
-        console.error('WARNING: Test credentials detected in production environment!')
-        toast.error('Payment system configuration error. Please contact support.')
-        setPurchasingId(null)
-        return
+      // If only sandboxInitPoint is returned, we must be in test mode
+      if (sandboxInitPoint && !initPoint) {
+        checkoutUrl = sandboxInitPoint
+        isTestMode = true
+      }
+      // If both are returned, check environment
+      else if (sandboxInitPoint && initPoint) {
+        const isProduction = process.env.NODE_ENV === 'production'
+        if (isProduction) {
+          // In production, prefer initPoint but log if sandbox is present
+          checkoutUrl = initPoint
+          console.warn('Both production and sandbox URLs returned in production environment')
+        } else {
+          // In development, use sandbox if available
+          checkoutUrl = sandboxInitPoint
+          isTestMode = true
+        }
       }
       
-      // Show a message about test mode if using sandbox URL
-      if (!isProduction && sandboxInitPoint && checkoutUrl === sandboxInitPoint) {
+      // Show appropriate messages
+      if (isTestMode) {
         toast.info('Opening Mercado Pago in test mode. Use a test user account to complete the purchase.')
       }
       

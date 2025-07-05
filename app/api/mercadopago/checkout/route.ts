@@ -21,8 +21,16 @@ export async function POST(request: NextRequest) {
   }
   
   // Log if using test or production credentials
-  const isTestMode = process.env.MERCADOPAGO_ACCESS_TOKEN?.startsWith('TEST-')
-  console.log('MercadoPago Mode:', isTestMode ? 'TEST' : 'PRODUCTION')
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN || ''
+  const isTestMode = accessToken.startsWith('TEST-')
+  const hasAppPrefix = accessToken.startsWith('APP-')
+  
+  console.log('MercadoPago Access Token format:', {
+    hasTestPrefix: isTestMode,
+    hasAppPrefix: hasAppPrefix,
+    tokenLength: accessToken.length,
+    firstChars: accessToken.substring(0, 10) + '...'
+  })
   console.log('Public Key:', process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY?.substring(0, 20) + '...')
 
   try {
