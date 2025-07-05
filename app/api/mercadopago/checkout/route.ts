@@ -19,16 +19,28 @@ export async function POST(request: NextRequest) {
       { status: 503 }
     )
   }
+  
+  // Log if using test or production credentials
+  const isTestMode = process.env.MERCADOPAGO_ACCESS_TOKEN?.startsWith('TEST-')
+  console.log('MercadoPago Mode:', isTestMode ? 'TEST' : 'PRODUCTION')
+  console.log('Public Key:', process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY?.substring(0, 20) + '...')
 
   try {
-    const { packageId, deviceId } = await request.json()
+    const { packageId, deviceId, browserInfo } = await request.json()
     console.log('Package ID:', packageId)
     console.log('Device ID:', deviceId || 'Not provided')
+    console.log('Browser Info:', browserInfo ? 'Provided' : 'Not provided')
 
     // Get headers
     const headersList = await headers()
     const authorization = headersList.get('authorization')
     const deviceIdFromHeader = headersList.get('x-meli-session-id')
+    
+    // Get client IP address for fraud prevention
+    const clientIp = headersList.get('x-forwarded-for')?.split(',')[0] || 
+                    headersList.get('x-real-ip') || 
+                    headersList.get('cf-connecting-ip') || // Cloudflare
+                    'unknown'
     
     // Get the actual origin from the request
     let origin = headersList.get('origin') || request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL
@@ -124,7 +136,7 @@ export async function POST(request: NextRequest) {
         installments: 1,
         default_installments: 1
       },
-      binary_mode: true, // Instant approval or rejection
+      // Remove binary_mode to allow pending states and reduce false fraud positives
       marketplace: 'NONE',
       metadata: {
         integration_type: 'checkout_pro',
@@ -142,6 +154,8 @@ export async function POST(request: NextRequest) {
         ...preferenceData.metadata,
         device_id: finalDeviceId
       }
+    } else {
+      console.warn('WARNING: No Device ID provided - this may trigger fraud detection!')
     }
 
     // Add additional_info for better fraud prevention
@@ -164,6 +178,18 @@ export async function POST(request: NextRequest) {
           number: userProfile?.phone_number ? userProfile.phone_number.substring(3) : ''
         },
         registration_date: user.created_at || new Date().toISOString()
+      },
+      ip_address: clientIp !== 'unknown' ? clientIp : undefined
+    }
+    
+    // Add browser info to additional_info if provided
+    if (browserInfo) {
+      additionalInfo.device = {
+        user_agent: browserInfo.userAgent,
+        language: browserInfo.language,
+        screen_resolution: browserInfo.screenResolution,
+        timezone: browserInfo.timezone,
+        platform: browserInfo.platform
       }
     }
     

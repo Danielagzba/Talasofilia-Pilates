@@ -77,6 +77,15 @@ export default function BuyClassesPage() {
         console.log('[BuyClasses] Warning: MercadoPago Device ID not found')
       }
       
+      // Collect browser information for better fraud detection
+      const browserInfo = {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        screenResolution: `${screen.width}x${screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        platform: navigator.platform
+      }
+      
       const response = await fetch('/api/mercadopago/checkout', {
         method: 'POST',
         headers: {
@@ -84,7 +93,7 @@ export default function BuyClassesPage() {
           ...authHeaders,
           ...(deviceId ? { 'X-meli-session-id': deviceId } : {})
         },
-        body: JSON.stringify({ packageId, deviceId }),
+        body: JSON.stringify({ packageId, deviceId, browserInfo }),
         credentials: 'include' // Include cookies for authentication
       })
 
@@ -97,12 +106,12 @@ export default function BuyClassesPage() {
       const { initPoint, sandboxInitPoint } = await response.json()
 
       // Redirect to MercadoPago Checkout
-      // Use sandboxInitPoint for testing, initPoint for production
-      const checkoutUrl = process.env.NODE_ENV === 'production' ? initPoint : (sandboxInitPoint || initPoint)
+      // Always use sandboxInitPoint for test credentials, initPoint for production credentials
+      const checkoutUrl = sandboxInitPoint || initPoint
       
-      // Show a message about test mode if in development
-      if (process.env.NODE_ENV !== 'production') {
-        toast.info('Opening Mercado Pago in test mode. Use a different account or test user to complete the purchase.')
+      // Show a message about test mode if using sandbox URL
+      if (sandboxInitPoint && checkoutUrl === sandboxInitPoint) {
+        toast.info('Opening Mercado Pago in test mode. Use a test user account to complete the purchase.')
       }
       
       window.location.href = checkoutUrl
