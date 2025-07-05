@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     // Get headers
     const headersList = await headers()
     const authorization = headersList.get('authorization')
-    const deviceIdFromHeader = headersList.get('x-device-session-id')
+    const deviceIdFromHeader = headersList.get('x-meli-session-id')
     
     // Get the actual origin from the request
     let origin = headersList.get('origin') || request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       },
       back_urls: {
         success: `${origin}/dashboard/checkout/success`,
-        failure: `${origin}/dashboard/buy-classes`,
+        failure: `${origin}/dashboard/checkout/failure`,
         pending: `${origin}/dashboard/checkout/pending`
       },
       auto_return: 'approved',
@@ -143,6 +143,32 @@ export async function POST(request: NextRequest) {
         device_id: finalDeviceId
       }
     }
+
+    // Add additional_info for better fraud prevention
+    const additionalInfo: any = {
+      items: [
+        {
+          id: packageData.id,
+          title: packageData.name,
+          description: packageData.description || `${packageData.number_of_classes} Pilates classes`,
+          category_id: 'services',
+          quantity: 1,
+          unit_price: Number(packageData.price)
+        }
+      ],
+      payer: {
+        first_name: userProfile?.display_name?.split(' ')[0] || '',
+        last_name: userProfile?.display_name?.split(' ').slice(1).join(' ') || '',
+        phone: {
+          area_code: userProfile?.phone_number ? userProfile.phone_number.substring(0, 3) : '',
+          number: userProfile?.phone_number ? userProfile.phone_number.substring(3) : ''
+        },
+        registration_date: user.created_at || new Date().toISOString()
+      }
+    }
+    
+    // Add additional_info to preference data
+    ;(preferenceData as any).additional_info = additionalInfo
 
     console.log('Creating MercadoPago preference with data:', JSON.stringify(preferenceData, null, 2))
     

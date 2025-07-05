@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayment } from '@/lib/mercadopago'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import crypto from 'crypto'
 
 // Add GET method for health check
 export async function GET() {
@@ -10,6 +11,63 @@ export async function GET() {
 // Export runtime configuration
 export const runtime = 'nodejs'
 export const maxDuration = 30
+
+// Verify MercadoPago webhook signature
+function verifyWebhookSignature(signature: string | null, requestId: string | null, dataId: string, secret: string): boolean {
+  if (!signature || !requestId || !secret) {
+    console.log('[MercadoPago Webhook] Missing signature components:', { signature: !!signature, requestId: !!requestId, secret: !!secret })
+    return false
+  }
+
+  try {
+    // Parse signature header: ts=<timestamp>,v1=<hash>
+    const parts = signature.split(',')
+    let ts = ''
+    let hash = ''
+    
+    parts.forEach((part) => {
+      const [key, value] = part.split('=')
+      if (key && value) {
+        const trimmedKey = key.trim()
+        const trimmedValue = value.trim()
+        if (trimmedKey === 'ts') {
+          ts = trimmedValue
+        } else if (trimmedKey === 'v1') {
+          hash = trimmedValue
+        }
+      }
+    })
+
+    if (!ts || !hash) {
+      console.log('[MercadoPago Webhook] Invalid signature format')
+      return false
+    }
+
+    // Build the manifest string according to MercadoPago format
+    const manifest = `id:${dataId};request-id:${requestId};ts:${ts};`
+    
+    // Calculate HMAC-SHA256
+    const calculatedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(manifest)
+      .digest('hex')
+    
+    const isValid = calculatedSignature === hash
+    
+    if (!isValid) {
+      console.log('[MercadoPago Webhook] Signature verification failed:', {
+        expected: hash,
+        calculated: calculatedSignature,
+        manifest
+      })
+    }
+    
+    return isValid
+  } catch (error) {
+    console.error('[MercadoPago Webhook] Error verifying signature:', error)
+    return false
+  }
+}
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
@@ -29,6 +87,21 @@ export async function POST(request: NextRequest) {
     // Verify webhook signature if configured
     const signature = request.headers.get('x-signature')
     const requestId = request.headers.get('x-request-id')
+    
+    // Verify webhook signature if secret is configured
+    const webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET
+    if (webhookSecret && body.data?.id) {
+      const isValidSignature = verifyWebhookSignature(signature, requestId, body.data.id.toString(), webhookSecret)
+      if (!isValidSignature) {
+        console.error('[MercadoPago Webhook] Invalid webhook signature')
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+      }
+      console.log('[MercadoPago Webhook] Signature verified successfully')
+    } else if (webhookSecret) {
+      console.log('[MercadoPago Webhook] Webhook secret configured but no data.id to verify')
+    } else {
+      console.log('[MercadoPago Webhook] Webhook secret not configured, skipping signature verification')
+    }
     
     // Log event details for debugging
     console.log('[MercadoPago Webhook] Event type received:', body.type)

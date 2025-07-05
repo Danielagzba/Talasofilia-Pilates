@@ -82,7 +82,7 @@ export default function BuyClassesPage() {
         headers: {
           'Content-Type': 'application/json',
           ...authHeaders,
-          ...(deviceId ? { 'X-Device-Session-Id': deviceId } : {})
+          ...(deviceId ? { 'X-meli-session-id': deviceId } : {})
         },
         body: JSON.stringify({ packageId, deviceId }),
         credentials: 'include' // Include cookies for authentication
