@@ -214,6 +214,14 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('MercadoPago response:', response)
+    
+    // Log warning if test credentials are being used
+    if (response.sandbox_init_point && !isTestMode) {
+      console.warn('WARNING: Sandbox URL returned but not in test mode - check your credentials!')
+    }
+    if (!response.sandbox_init_point && isTestMode) {
+      console.warn('WARNING: No sandbox URL returned but using TEST credentials!')
+    }
 
     return NextResponse.json({ 
       preferenceId: response.id,

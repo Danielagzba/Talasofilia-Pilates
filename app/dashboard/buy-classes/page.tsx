@@ -106,11 +106,21 @@ export default function BuyClassesPage() {
       const { initPoint, sandboxInitPoint } = await response.json()
 
       // Redirect to MercadoPago Checkout
-      // Always use sandboxInitPoint for test credentials, initPoint for production credentials
-      const checkoutUrl = sandboxInitPoint || initPoint
+      // In production, always use initPoint even if sandboxInitPoint exists
+      // This prevents accidentally using test mode in production
+      const isProduction = process.env.NODE_ENV === 'production'
+      const checkoutUrl = isProduction ? initPoint : (sandboxInitPoint || initPoint)
+      
+      // Show a warning if test credentials are being used in production
+      if (isProduction && sandboxInitPoint) {
+        console.error('WARNING: Test credentials detected in production environment!')
+        toast.error('Payment system configuration error. Please contact support.')
+        setPurchasingId(null)
+        return
+      }
       
       // Show a message about test mode if using sandbox URL
-      if (sandboxInitPoint && checkoutUrl === sandboxInitPoint) {
+      if (!isProduction && sandboxInitPoint && checkoutUrl === sandboxInitPoint) {
         toast.info('Opening Mercado Pago in test mode. Use a test user account to complete the purchase.')
       }
       
