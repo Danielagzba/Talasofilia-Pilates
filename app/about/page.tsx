@@ -287,7 +287,7 @@ export default function AboutPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="rounded-none px-8">
-                <Link href="/booking">Book a Class</Link>
+                <Link href="/login">Book a Class</Link>
               </Button>
               <Button
                 asChild

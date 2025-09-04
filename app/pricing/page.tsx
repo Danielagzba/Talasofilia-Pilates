@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import { useEffect } from 'react'
+import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Check } from "lucide-react";
@@ -16,8 +16,8 @@ import {
 
 export default function PricingPage() {
   useEffect(() => {
-    document.title = 'Pricing | Talasofilia Pilates'
-  }, [])
+    document.title = "Pricing | Talasofilia Pilates";
+  }, []);
   return (
     <div className="pt-16">
       {/* Hero Section */}
@@ -83,7 +83,7 @@ export default function PricingPage() {
                 </CardContent>
                 <CardFooter>
                   <Button asChild className="w-full rounded-none">
-                    <Link href="/booking">Book Now</Link>
+                    <Link href="/login">Book Now</Link>
                   </Button>
                 </CardFooter>
               </Card>
@@ -122,9 +122,7 @@ export default function PricingPage() {
                     <span className="text-3xl font-bold">{pkg.price}</span>
                     <span className="text-muted-foreground ml-1">MXN</span>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {pkg.pricePerClass} MXN per class
-                  </p>
+
                   <ul className="space-y-2">
                     {pkg.features.map((feature, i) => (
                       <li key={i} className="flex items-start">
@@ -141,7 +139,7 @@ export default function PricingPage() {
                       pkg.popular ? "bg-stone-900 hover:bg-stone-800" : ""
                     }`}
                   >
-                    <Link href="/contact">Purchase Package</Link>
+                    <Link href="/login">Purchase Package</Link>
                   </Button>
                 </CardFooter>
               </Card>
@@ -210,9 +208,8 @@ export default function PricingPage() {
 const singleClasses = [
   {
     name: "Drop-In Class",
-    description:
-      "Single class attendance for either Morning Flow or Evening Restore",
-    price: "350",
+    description: "Single class attendance",
+    price: "400",
     features: [
       "Access to any scheduled class",
       "No commitment required",
@@ -225,8 +222,7 @@ const singleClasses = [
 const classPackages = [
   {
     name: "4-Class Pack",
-    price: "1,000",
-    pricePerClass: "250",
+    price: "1,200",
     popular: false,
     features: [
       "Access to any scheduled class",
@@ -236,8 +232,7 @@ const classPackages = [
   },
   {
     name: "6-Class Pack",
-    price: "1,500",
-    pricePerClass: "250",
+    price: "1,650",
     popular: false,
     features: [
       "Access to any scheduled class",
@@ -248,7 +243,6 @@ const classPackages = [
   {
     name: "8-Class Pack",
     price: "2,000",
-    pricePerClass: "250",
     popular: false,
     features: [
       "Access to any scheduled class",
@@ -258,9 +252,7 @@ const classPackages = [
   },
   {
     name: "12-Class Pack",
-
-    price: "3,000",
-    pricePerClass: "250",
+    price: "2,800",
     popular: false,
     features: [
       "Access to any scheduled class",

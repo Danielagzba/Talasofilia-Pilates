@@ -50,7 +50,7 @@ export default function Home() {
                 size="lg"
                 className="rounded-none px-8 bg-transparent text-white border-white hover:bg-white/10"
               >
-                <Link href="/booking">Book a Session</Link>
+                <Link href="/login">Book a Session</Link>
               </Button>
             </div>
           </div>
@@ -242,7 +242,7 @@ export default function Home() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="rounded-none px-8">
-                <Link href="/booking">Book a Class</Link>
+                <Link href="/login">Book a Class</Link>
               </Button>
               <Button
                 asChild

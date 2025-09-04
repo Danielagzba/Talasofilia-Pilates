@@ -89,7 +89,7 @@ export default function ClassesPage() {
                     </div>
                   </div>
                   <Button asChild className="rounded-none">
-                    <Link href="/booking" className="group">
+                    <Link href="/login" className="group">
                       Book This Class
                       <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </Link>
@@ -145,7 +145,7 @@ export default function ClassesPage() {
 
           <div className="text-center mt-12">
             <Button asChild className="rounded-none px-8">
-              <Link href="/booking">Book a Class</Link>
+              <Link href="/login">Book a Class</Link>
             </Button>
           </div>
         </div>
