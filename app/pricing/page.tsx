@@ -209,7 +209,7 @@ const singleClasses = [
   {
     name: "Drop-In Class",
     description: "Single class attendance",
-    price: "400",
+    price: "350",
     features: [
       "Access to any scheduled class",
       "No commitment required",
