@@ -45,22 +45,11 @@ export default function DashboardPage() {
   const [userPurchases, setUserPurchases] = useState<UserPurchase[]>([])
   const [upcomingClasses, setUpcomingClasses] = useState<UpcomingClass[]>([])
   const [dataLoading, setDataLoading] = useState(true)
+  const [dataError, setDataError] = useState<string | null>(null)
   const subscriptionRef = useRef<any>(null)
   
   console.log('[Dashboard] Initial render - user:', user?.id, 'dataLoading:', dataLoading)
   
-  // Failsafe to prevent infinite loading
-  useEffect(() => {
-    const failsafeTimeout = setTimeout(() => {
-      if (dataLoading) {
-        console.error('[Dashboard] Failsafe timeout triggered - forcing dataLoading to false')
-        setDataLoading(false)
-      }
-    }, 15000) // 15 seconds max
-    
-    return () => clearTimeout(failsafeTimeout)
-  }, [])
-
   useEffect(() => {
     if (user?.user_metadata) {
       setDisplayName(user.user_metadata.display_name || '')
@@ -171,17 +160,14 @@ export default function DashboardPage() {
       return
     }
     
-    // Set a timeout to ensure we don't hang forever
-    const timeoutId = setTimeout(() => {
-      console.error(`[Dashboard ${startTime}] Fetch timeout after ${Date.now() - startTime}ms - setting loading to false`)
-      setDataLoading(false)
-    }, 10000) // 10 second timeout
-    
+    setDataLoading(true)
+    setDataError(null)
+
     try {
       console.log(`[Dashboard ${startTime}] Fetching from API route... (${Date.now() - startTime}ms)`)
       
       // Get auth headers
-      const authHeaders = await (async () => {
+      const authHeaders = await (async (): Promise<Record<string, string>> => {
         const supabase = createClient()
         const { data: { session } } = await supabase.auth.getSession()
         return session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}
@@ -189,6 +175,8 @@ export default function DashboardPage() {
       
       const response = await fetch('/api/dashboard/data', {
         method: 'GET',
+        cache: 'no-store',
+        signal: AbortSignal.timeout(10000),
         headers: {
           'Content-Type': 'application/json',
           ...authHeaders
@@ -212,10 +200,8 @@ export default function DashboardPage() {
       
     } catch (error) {
       console.error(`[Dashboard ${startTime}] Error fetching user data:`, error)
-      setUserPurchases([])
-      setUpcomingClasses([])
+      setDataError('We couldn’t load your account. Please try again.')
     } finally {
-      clearTimeout(timeoutId)
       console.log(`[Dashboard ${startTime}] Setting dataLoading to false (${Date.now() - startTime}ms)`)
       setDataLoading(false)
     }
@@ -397,6 +383,15 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
+      {dataError && (
+        <div role="alert" className="border border-stone-200 p-4 space-y-3">
+          <p>{dataError}</p>
+          <Button variant="outline" onClick={() => fetchUserData()} disabled={dataLoading}>
+            Try again
+          </Button>
+        </div>
+      )}
+
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -410,6 +405,8 @@ export default function DashboardPage() {
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
+            ) : dataError ? (
+              <p className="text-muted-foreground">Balance unavailable. Please try again.</p>
             ) : (
               <>
                 <p className="text-2xl font-bold">
@@ -455,6 +452,8 @@ export default function DashboardPage() {
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
+            ) : dataError ? (
+              <p className="text-muted-foreground">Upcoming classes unavailable. Please try again.</p>
             ) : (
               <>
                 <p className="text-2xl font-bold">{upcomingClasses.length} Classes</p>
