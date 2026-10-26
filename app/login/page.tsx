@@ -9,6 +9,8 @@ import { Label } from '../../components/ui/label'
 import { useAuth } from '../../contexts/auth-context'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
+import { AppleSignIn } from '@/components/apple-sign-in'
+import { safeAuthDestination } from '@/lib/apple-auth'
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
@@ -16,10 +18,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
+  const [appleBusy, setAppleBusy] = useState(false)
+  const busy = loading || appleBusy
   const { signIn, signUp, user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
-  const redirectTo = searchParams.get('redirectTo') || '/dashboard'
+  const redirectTo = safeAuthDestination(searchParams.get('redirectTo'))
   const isConfirmed = searchParams.get('confirmed') === 'true'
 
   // Redirect to dashboard or redirectTo URL if already logged in
@@ -41,6 +45,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (busy) return
     setLoading(true)
 
     try {
@@ -123,7 +128,7 @@ export default function LoginPage() {
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Enter your name"
                   required
-                  disabled={loading}
+                  disabled={busy}
                 />
               </div>
             )}
@@ -137,7 +142,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
                 required
-                disabled={loading}
+                disabled={busy}
               />
             </div>
 
@@ -150,7 +155,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
-                disabled={loading}
+                disabled={busy}
                 minLength={6}
               />
               {!isLogin && (
@@ -163,15 +168,19 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="w-full rounded-none"
-              disabled={loading}
+              disabled={busy}
             >
               {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Sign Up'}
             </Button>
           </form>
 
+          <AppleSignIn disabled={busy} onBusyChange={setAppleBusy}
+            onSuccess={() => router.replace(redirectTo)} />
+
           <div className="mt-6 text-center">
             <button
               type="button"
+              disabled={busy}
               onClick={() => {
                 setIsLogin(!isLogin)
                 setDisplayName('') // Clear display name when switching
