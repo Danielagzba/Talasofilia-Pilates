@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { CancellationPolicy } from "../../components/cancellation-policy";
 import Image from "next/image";
 import { Check } from "lucide-react";
 import { Button } from "../../components/ui/button";
@@ -302,7 +303,7 @@ const pricingFaqs = [
   {
     question: "What is your cancellation policy?",
     answer:
-      "Classes must be cancelled at least 24 hours in advance to avoid being charged.",
+      <CancellationPolicy />,
   },
   {
     question: "Is there a registration fee?",
