@@ -163,7 +163,7 @@ export default function BuyClassesPage() {
   const getFeatures = (pkg: ClassPackage): string[] => {
     const features = [
       `${pkg.number_of_classes} Pilates ${pkg.number_of_classes === 1 ? "session" : "sessions"}`,
-      `Valid for 90 days`,
+      `Valid for ${pkg.validity_days} days`,
     ];
 
 
@@ -209,7 +209,7 @@ export default function BuyClassesPage() {
                   <div>
                     <CardTitle>{pkg.name}</CardTitle>
                     <CardDescription>
-                      Valid for 90 days
+                      Valid for {pkg.validity_days} days
                     </CardDescription>
                   </div>
                   {popular && (
