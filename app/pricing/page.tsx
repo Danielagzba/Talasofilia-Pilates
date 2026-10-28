@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CancellationPolicy } from "../../components/cancellation-policy";
 import Image from "next/image";
@@ -15,9 +15,38 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 
+interface ClassPackage {
+  id: string;
+  name: string;
+  number_of_classes: number;
+  price: number;
+  validity_days: number;
+}
+
 export default function PricingPage() {
+  const [packages, setPackages] = useState<ClassPackage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const loadPackages = async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const response = await fetch("/api/packages", { cache: "no-store" });
+      if (!response.ok) throw new Error("Packages unavailable");
+      const data = await response.json();
+      setPackages(data.packages);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const singleClasses = packages.filter(pkg => pkg.number_of_classes === 1);
+  const classPackages = packages.filter(pkg => pkg.number_of_classes > 1);
+
   useEffect(() => {
     document.title = "Pricing | Talasofilia Pilates";
+    void loadPackages();
   }, []);
   return (
     <div className="pt-16">
@@ -47,6 +76,12 @@ export default function PricingPage() {
         </div>
       </section>
 
+      <div className="container px-4 md:px-6 pt-8" aria-live="polite">
+        {loading && <p>Loading current packages…</p>}
+        {error && <p role="alert">Current packages are unavailable. <button className="underline" onClick={loadPackages}>Try again</button></p>}
+        {!loading && !error && packages.length === 0 && <p>No packages are currently available. Please contact the studio.</p>}
+      </div>
+
       {/* Single Classes */}
       <section className="py-20 md:py-32">
         <div className="container px-4 md:px-6">
@@ -60,21 +95,21 @@ export default function PricingPage() {
           </div>
 
           <div className="grid md:grid-cols-1 gap-8 max-w-xl mx-auto">
-            {singleClasses.map((item, index) => (
-              <Card key={index} className="border-0 shadow-md">
+            {singleClasses.map((item) => (
+              <Card key={item.id} className="border-0 shadow-md">
                 <CardHeader>
                   <CardTitle className="font-serif text-2xl font-light">
                     {item.name}
                   </CardTitle>
-                  <CardDescription>{item.description}</CardDescription>
+                  <CardDescription>Single class attendance · Valid for {item.validity_days} days</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-baseline mb-4">
-                    <span className="text-3xl font-bold">{item.price}</span>
+                    <span className="text-3xl font-bold">{item.price.toLocaleString("en-US")}</span>
                     <span className="text-muted-foreground ml-1">MXN</span>
                   </div>
                   <ul className="space-y-2">
-                    {item.features.map((feature, i) => (
+                    {singleClassFeatures.map((feature, i) => (
                       <li key={i} className="flex items-start">
                         <Check className="h-5 w-5 mr-2 text-green-500 shrink-0" />
                         <span className="text-sm">{feature}</span>
@@ -106,26 +141,27 @@ export default function PricingPage() {
           </div>
 
           <div className="grid md:grid-cols-4 gap-8 max-w-5xl mx-auto">
-            {classPackages.map((pkg, index) => (
+            {classPackages.map((pkg) => (
               <Card
-                key={index}
+                key={pkg.id}
                 className={`border-0 shadow-md ${
-                  pkg.popular ? "ring-2 ring-stone-900" : ""
+                  pkg.number_of_classes === 4 ? "ring-2 ring-stone-900" : ""
                 }`}
               >
                 <CardHeader>
                   <CardTitle className="font-serif text-2xl font-light">
                     {pkg.name}
                   </CardTitle>
+                  <CardDescription>Valid for {pkg.validity_days} days</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-baseline mb-4">
-                    <span className="text-3xl font-bold">{pkg.price}</span>
+                    <span className="text-3xl font-bold">{pkg.price.toLocaleString("en-US")}</span>
                     <span className="text-muted-foreground ml-1">MXN</span>
                   </div>
 
                   <ul className="space-y-2">
-                    {pkg.features.map((feature, i) => (
+                    {packageFeatures.map((feature, i) => (
                       <li key={i} className="flex items-start">
                         <Check className="h-5 w-5 mr-2 text-green-500 shrink-0" />
                         <span className="text-sm">{feature}</span>
@@ -137,7 +173,7 @@ export default function PricingPage() {
                   <Button
                     asChild
                     className={`w-full rounded-none ${
-                      pkg.popular ? "bg-stone-900 hover:bg-stone-800" : ""
+                      pkg.number_of_classes === 4 ? "bg-stone-900 hover:bg-stone-800" : ""
                     }`}
                   >
                     <Link href="/login">Purchase Package</Link>
@@ -205,95 +241,24 @@ export default function PricingPage() {
   );
 }
 
-// Sample data
-const singleClasses = [
-  {
-    name: "Drop-In Class",
-    description: "Single class attendance",
-    price: "350",
-    features: [
-      "Access to any scheduled class",
-      "No commitment required",
-      "Suitable for first-time visitors",
-      "Equipment provided",
-    ],
-  },
+const singleClassFeatures = [
+  "Access to any scheduled class",
+  "No commitment required",
+  "Suitable for first-time visitors",
+  "Equipment provided",
 ];
 
-const classPackages = [
-  {
-    name: "4-Class Pack",
-    price: "1,200",
-    popular: false,
-    features: [
-      "Access to any scheduled class",
-      "Flexible scheduling",
-      "Equipment provided",
-    ],
-  },
-  {
-    name: "6-Class Pack",
-    price: "1,650",
-    popular: false,
-    features: [
-      "Access to any scheduled class",
-      "Flexible scheduling",
-      "Equipment provided",
-    ],
-  },
-  {
-    name: "8-Class Pack",
-    price: "2,000",
-    popular: false,
-    features: [
-      "Access to any scheduled class",
-      "Flexible scheduling",
-      "Equipment provided",
-    ],
-  },
-  {
-    name: "12-Class Pack",
-    price: "2,800",
-    popular: false,
-    features: [
-      "Access to any scheduled class",
-      "Flexible scheduling",
-      "Equipment provided",
-    ],
-  },
-];
-
-const privateSessions = [
-  {
-    name: "Single Private Session",
-    description: "One-on-one instruction with Maria",
-    price: "800",
-    features: [
-      "60-minute personalized session",
-      "Customized program based on your needs",
-      "Detailed form correction",
-      "Equipment provided",
-    ],
-  },
-  {
-    name: "Private Session Package",
-    description: "5 private sessions with Maria",
-    price: "3,500",
-    features: [
-      "5 x 60-minute personalized sessions",
-      "Progressive program development",
-      "Detailed form correction",
-      "Equipment provided",
-      "Flexible scheduling",
-    ],
-  },
+const packageFeatures = [
+  "Access to any scheduled class",
+  "Flexible scheduling",
+  "Equipment provided",
 ];
 
 const pricingFaqs = [
   {
     question: "Do class packages expire?",
     answer:
-      "Yes, all class packages (4, 6, 8, and 12 classes) are valid for 3 months from the date of purchase.",
+      "Yes. Each package’s validity is shown above in days from the date of purchase, matching the app. You can find your purchased package’s exact expiration date in your purchase history.",
   },
   {
     question: "Can I share my class package with a friend?",
