@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import Script from 'next/script'
 
 declare global {
@@ -10,10 +10,8 @@ declare global {
 }
 
 export function MercadoPagoDevice() {
-  useEffect(() => {
-    // The device session ID will be available after the script loads
-    // as window.MP_DEVICE_SESSION_ID
-  }, [])
+  const pathname = usePathname()
+  if (pathname?.replace(/\/$/, '') === '/reset-password') return null
 
   return (
     <Script
