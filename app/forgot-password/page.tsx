@@ -20,15 +20,14 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: 'https://www.talasofiliapilates.com/reset-password',
       })
 
       if (error) {
         toast.error(error.message)
       } else {
         setSent(true)
-        toast.success('Password reset link sent to your email!')
       }
     } catch (error) {
       toast.error('Something went wrong. Please try again.')
@@ -78,7 +77,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <div className="text-center space-y-4">
               <p className="text-sm text-muted-foreground">
-                We've sent a password reset link to <strong>{email}</strong>
+                If an account exists for <strong>{email.trim()}</strong>, you’ll receive a password reset link.
               </p>
               <p className="text-sm text-muted-foreground">
                 Didn't receive the email? Check your spam folder or{' '}

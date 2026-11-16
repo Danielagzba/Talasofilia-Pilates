@@ -24,7 +24,7 @@ export function createClient() {
       storageKey: 'supabase.auth.token',
       storage: typeof window !== 'undefined' ? window.localStorage : undefined,
       autoRefreshToken: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: typeof window === 'undefined' || window.location.pathname.replace(/\/$/, '') !== '/reset-password'
     }
   })
   
